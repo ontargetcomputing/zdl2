@@ -245,9 +245,9 @@ function Create-StorageSelectionPage {
     
     # Storage type radio buttons
     $radioLocal = New-Object System.Windows.Forms.RadioButton
-    $radioLocal.Text = "Local Storage Only"
+    $radioLocal.Text = "Local Storage Only (%AppData%\\Local\\ZoomDownloader)"
     $radioLocal.Location = New-Object System.Drawing.Point(50, 60)
-    $radioLocal.Size = New-Object System.Drawing.Size(200, 20)
+    $radioLocal.Size = New-Object System.Drawing.Size(400, 20)
     $radioLocal.Checked = $true
     $radioLocal.Name = "radioLocal"
     $panel.Controls.Add($radioLocal)
@@ -273,14 +273,21 @@ function Create-StorageSelectionPage {
     $pnlLocal.Location = New-Object System.Drawing.Point(70, 150)
     $pnlLocal.Size = New-Object System.Drawing.Size(450, 60)
     $pnlLocal.Name = "pnlLocal"
-    $pnlLocal.Visible = $true
+    $pnlLocal.Visible = $true  # Always visible
     $panel.Controls.Add($pnlLocal)
     
     $lblLocalPath = New-Object System.Windows.Forms.Label
-    $lblLocalPath.Text = "Download Path:"
+    $lblLocalPath.Text = "Download Path:"  
     $lblLocalPath.Location = New-Object System.Drawing.Point(0, 10)
     $lblLocalPath.Size = New-Object System.Drawing.Size(100, 20)
     $pnlLocal.Controls.Add($lblLocalPath)
+
+    $lblLocalNote = New-Object System.Windows.Forms.Label
+    $lblLocalNote.Text = "(Default: %AppData%\\Local\\ZoomDownloader)"
+    $lblLocalNote.Location = New-Object System.Drawing.Point(110, 35)
+    $lblLocalNote.Size = New-Object System.Drawing.Size(300, 18)
+    $lblLocalNote.ForeColor = [System.Drawing.Color]::Gray
+    $pnlLocal.Controls.Add($lblLocalNote)
     
     $txtLocalPath = New-Object System.Windows.Forms.TextBox
     $txtLocalPath.Location = New-Object System.Drawing.Point(110, 10)
@@ -377,36 +384,19 @@ function Create-StorageSelectionPage {
     
     # Radio button events to show/hide panels
     $radioLocal.Add_CheckedChanged({
-
-
-        if ($this.Checked) {
-            $parentPanel = $this.Parent  
-            $parentPanel.Controls["pnlLocal"].Visible = $true
-            $parentPanel.Controls["pnlLocal"].BringToFront()
-            $parentPanel.Controls["pnlOneDrive"].Visible = $false
-            $parentPanel.Controls["pnlS3"].Visible = $false            
-        }
+        $parentPanel = $this.Parent
+        $parentPanel.Controls["pnlLocal"].Visible = $true #always visible
     })
     
     $radioOneDrive.Add_CheckedChanged({
-        if ($this.Checked) {
-            $parentPanel = $this.Parent  
-            $parentPanel.Controls["pnlLocal"].Visible = $false
-            $parentPanel.Controls["pnlOneDrive"].BringToFront()
-            $parentPanel.Controls["pnlOneDrive"].Visible = $true
-            $parentPanel.Controls["pnlS3"].Visible = $false 
-        }
+        $parentPanel = $this.Parent
+        $parentPanel.Controls["pnlOneDrive"].Visible = $this.Checked
+        if ($this.Checked) { $parentPanel.Controls["pnlOneDrive"].BringToFront() }
     })
-    
     $radioS3.Add_CheckedChanged({
-        if ($this.Checked) {
-            Write-Host "S3 radio button checked"  
-            $parentPanel = $this.Parent  
-            $parentPanel.Controls["pnlLocal"].Visible = $false
-            $parentPanel.Controls["pnlOneDrive"].Visible = $false
-            $parentPanel.Controls["pnlS3"].BringToFront()
-            $parentPanel.Controls["pnlS3"].Visible = $true   
-        } 
+        $parentPanel = $this.Parent
+        $parentPanel.Controls["pnlS3"].Visible = $this.Checked
+        if ($this.Checked) { $parentPanel.Controls["pnlS3"].BringToFront() }
     })
     
     # Browse button event
@@ -789,7 +779,7 @@ $result = $form.ShowDialog()
 
 if ($result -eq "OK") {
     Write-Host "Setup completed successfully!" -ForegroundColor Green
-    Write-Host "Configuration saved to: $(Join-Path $env:USERPROFILE "ZoomDownloaderConfig.json")" -ForegroundColor Green
+    Write-host "Configuration saved to: $(Join-Path $env:USERPROFILE "ZoomDownloaderConfig.json")" -ForegroundColor Green
 } else {
     Write-Host "Setup was cancelled." -ForegroundColor Yellow
 }
