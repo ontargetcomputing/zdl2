@@ -543,11 +543,20 @@ function Create-DatabasePage {
     $panel.Controls.Add($lblDbType)
     
     $cmbDatabaseType = New-Object System.Windows.Forms.ComboBox
-    $cmbDatabaseType.Items.AddRange(@("SQL Server", "MySQL", "PostgreSQL", "SQLite"))
+    $cmbDatabaseType.Items.AddRange(@("SQL Server"))
     $cmbDatabaseType.Location = New-Object System.Drawing.Point(140, 60)
     $cmbDatabaseType.Size = New-Object System.Drawing.Size(150, 20)
     $cmbDatabaseType.DropDownStyle = "DropDownList"
     $cmbDatabaseType.Name = "cmbDatabaseType"
+
+    $lblDbTypeValue = New-Object System.Windows.Forms.Label
+    $lblDbTypeValue.Text = "SQL Server"
+    $lblDbTypeValue.Location = New-Object System.Drawing.Point(140, 60)
+    $lblDbTypeValue.Size = New-Object System.Drawing.Size(150, 20)
+    $lblDbTypeValue.Font = New-Object System.Drawing.Font("Microsoft Sans Serif", 9, [System.Drawing.FontStyle]::Regular)
+    $lblDbTypeValue.Name = "lblDbTypeValue"
+    $panel.Controls.Add($lblDbTypeValue)
+    
     $panel.Controls.Add($cmbDatabaseType)
     
     # Server
@@ -555,13 +564,14 @@ function Create-DatabasePage {
     $lblServer.Text = "Server:"
     $lblServer.Location = New-Object System.Drawing.Point(30, 100)
     $lblServer.Size = New-Object System.Drawing.Size(100, 20)
+
     $panel.Controls.Add($lblServer)
     
-    $txtServer = New-Object System.Windows.Forms.TextBox
-    $txtServer.Location = New-Object System.Drawing.Point(140, 100)
-    $txtServer.Size = New-Object System.Drawing.Size(200, 20)
-    $txtServer.Name = "txtServer"
-    $panel.Controls.Add($txtServer)
+    $script:txtServer = New-Object System.Windows.Forms.TextBox
+    $script:txtServer.Location = New-Object System.Drawing.Point(140, 100)
+    $script:txtServer.Size = New-Object System.Drawing.Size(200, 20)
+    $script:txtServer.Name = "txtServer"
+    $panel.Controls.Add($script:txtServer)
     
     # Database Name
     $lblDatabase = New-Object System.Windows.Forms.Label
@@ -570,11 +580,11 @@ function Create-DatabasePage {
     $lblDatabase.Size = New-Object System.Drawing.Size(100, 20)
     $panel.Controls.Add($lblDatabase)
     
-    $txtDatabase = New-Object System.Windows.Forms.TextBox
-    $txtDatabase.Location = New-Object System.Drawing.Point(140, 140)
-    $txtDatabase.Size = New-Object System.Drawing.Size(200, 20)
-    $txtDatabase.Name = "txtDatabase"
-    $panel.Controls.Add($txtDatabase)
+    $script:txtDatabase = New-Object System.Windows.Forms.TextBox
+    $script:txtDatabase.Location = New-Object System.Drawing.Point(140, 140)
+    $script:txtDatabase.Size = New-Object System.Drawing.Size(200, 20)
+    $script:txtDatabase.Name = "txtDatabase"
+    $panel.Controls.Add($script:txtDatabase)
     
     # Username
     $lblUsername = New-Object System.Windows.Forms.Label
@@ -583,11 +593,11 @@ function Create-DatabasePage {
     $lblUsername.Size = New-Object System.Drawing.Size(100, 20)
     $panel.Controls.Add($lblUsername)
     
-    $txtUsername = New-Object System.Windows.Forms.TextBox
-    $txtUsername.Location = New-Object System.Drawing.Point(140, 180)
-    $txtUsername.Size = New-Object System.Drawing.Size(200, 20)
-    $txtUsername.Name = "txtUsername"
-    $panel.Controls.Add($txtUsername)
+    $script:txtUsername = New-Object System.Windows.Forms.TextBox
+    $script:txtUsername.Location = New-Object System.Drawing.Point(140, 180)
+    $script:txtUsername.Size = New-Object System.Drawing.Size(200, 20)
+    $script:txtUsername.Name = "txtUsername"
+    $panel.Controls.Add($script:txtUsername)
     
     # Password
     $lblPassword = New-Object System.Windows.Forms.Label
@@ -596,36 +606,52 @@ function Create-DatabasePage {
     $lblPassword.Size = New-Object System.Drawing.Size(100, 20)
     $panel.Controls.Add($lblPassword)
     
-    $txtPassword = New-Object System.Windows.Forms.TextBox
-    $txtPassword.Location = New-Object System.Drawing.Point(140, 220)
-    $txtPassword.Size = New-Object System.Drawing.Size(200, 20)
-    $txtPassword.UseSystemPasswordChar = $true
-    $txtPassword.Name = "txtPassword"
-    $panel.Controls.Add($txtPassword)
+    $script:txtPassword = New-Object System.Windows.Forms.TextBox
+    $script:txtPassword.Location = New-Object System.Drawing.Point(140, 220)
+    $script:txtPassword.Size = New-Object System.Drawing.Size(200, 20)
+    $script:txtPassword.UseSystemPasswordChar = $true
+    $script:txtPassword.Name = "txtPassword"
+    $panel.Controls.Add($script:txtPassword)
+
+    $script:lblDbStatus = New-Object System.Windows.Forms.Label
+    $script:lblDbStatus.Name = "lblDbStatus"
+    $script:lblDbStatus.Location = New-Object System.Drawing.Point(30, 240)
+    $script:lblDbStatus.Size = New-Object System.Drawing.Size(400, 30)
+    $script:lblDbStatus.Text = ""
+    $panel.Controls.Add($script:lblDbStatus)
 
     # Test Connection Button
-    $btnTestDb = New-Object System.Windows.Forms.Button
-    $btnTestDb.Text = "Test Connection"
-    $btnTestDb.Location = New-Object System.Drawing.Point(370, 60)
-    $btnTestDb.Size = New-Object System.Drawing.Size(120, 30)
-    $btnTestDb.Name = "btnTestDb"
-    $btnTestDb.Enabled = $false
-    $btnTestDb.Add_Click({ Write-Host "[DEBUG] Database Test Connection button pressed" })
-    $panel.Controls.Add($btnTestDb)
+    $script:btnTestDb = New-Object System.Windows.Forms.Button
+    $script:btnTestDb.Text = "Test Connection"
+    $script:btnTestDb.Location = New-Object System.Drawing.Point(30, 270)
+    $script:btnTestDb.Size = New-Object System.Drawing.Size(120, 30)
+    $script:btnTestDb.Name = "btnTestDb"
+    $script:btnTestDb.Enabled = $false
+    $script:btnTestDb.Add_Click({ 
+        $this.Enabled = $false
+        $script:lblDbStatus.Text = "Testing Database connection..."
+        $script:lblDbStatus.ForeColor = [System.Drawing.Color]::Blue
+        $form.Update()
+        Start-Sleep -Milliseconds 1200
+        $script:lblDbStatus.Text = "SUCCESS: Simulated DB connection. (Replace with real API call)"
+        $script:lblDbStatus.ForeColor = [System.Drawing.Color]::Green
+        $this.Enabled = $true
+    })
+    $panel.Controls.Add($script:btnTestDb)
 
+    #RDB 
     # Enable Test Connection only if all DB fields are filled
     $checkDbFields = {
-        if ($cmbDatabaseType.SelectedItem -and $txtServer.Text -and $txtDatabase.Text -and $txtUsername.Text -and $txtPassword.Text) {
-            $btnTestDb.Enabled = $true
+        if ($script:txtServer.Text -and $script:txtDatabase.Text -and $script:txtUsername.Text -and $script:txtPassword.Text) {
+            $script:btnTestDb.Enabled = $true
         } else {
-            $btnTestDb.Enabled = $false
+            $script:btnTestDb.Enabled = $false
         }
     }
-    $cmbDatabaseType.Add_SelectedIndexChanged($checkDbFields)
-    $txtServer.Add_TextChanged($checkDbFields)
-    $txtDatabase.Add_TextChanged($checkDbFields)
-    $txtUsername.Add_TextChanged($checkDbFields)
-    $txtPassword.Add_TextChanged($checkDbFields)
+    $script:txtServer.Add_TextChanged($checkDbFields)
+    $script:txtDatabase.Add_TextChanged($checkDbFields)
+    $script:txtUsername.Add_TextChanged($checkDbFields)
+    $script:txtPassword.Add_TextChanged($checkDbFields)
     
     return $panel
 }
@@ -780,13 +806,14 @@ function Validate-CurrentPage {
             $radioS3 = $currentPanel.Controls["radioS3"]
             
             if ($radioLocal.Checked) {
-                $localPath = $currentPanel.Controls["pnlLocal"].Controls["txtLocalPath"].Text.Trim()
-                if ([string]::IsNullOrWhiteSpace($localPath)) {
-                    [System.Windows.Forms.MessageBox]::Show("Local path is required.", "Validation Error")
-                    return $false
-                }
+                # TODO RDB
+                # $localPath = $currentPanel.Controls["pnlLocal"].Controls["txtLocalPath"].Text.Trim()
+                # if ([string]::IsNullOrWhiteSpace($localPath)) {
+                #     [System.Windows.Forms.MessageBox]::Show("Local path is required.", "Validation Error")
+                #     return $false
+                # }
                 $global:Config.Storage.Type = "Local"
-                $global:Config.Storage.Path = $localPath
+                # $global:Config.Storage.Path = $localPath
             }
             elseif ($radioOneDrive.Checked) {
                 $oneDriveFolder = $currentPanel.Controls["pnlOneDrive"].Controls["txtOneDriveFolder"].Text.Trim()
@@ -830,16 +857,11 @@ function Validate-CurrentPage {
         }
         4 { # Database
             $currentPanel = $pageControls[3]
-            $dbType = $currentPanel.Controls["cmbDatabaseType"].SelectedItem
             $server = $currentPanel.Controls["txtServer"].Text.Trim()
             $database = $currentPanel.Controls["txtDatabase"].Text.Trim()
             $username = $currentPanel.Controls["txtUsername"].Text.Trim()
             $password = $currentPanel.Controls["txtPassword"].Text.Trim()
-            
-            if ($null -eq $dbType) {
-                [System.Windows.Forms.MessageBox]::Show("Please select a database type.", "Validation Error")
-                return $false
-            }
+ 
             if ([string]::IsNullOrWhiteSpace($server)) {
                 [System.Windows.Forms.MessageBox]::Show("Server is required.", "Validation Error")
                 return $false
@@ -849,7 +871,6 @@ function Validate-CurrentPage {
                 return $false
             }
             
-            $global:Config.Database.Type = $dbType
             $global:Config.Database.Server = $server
             $global:Config.Database.Database = $database
             $global:Config.Database.Username = $username
