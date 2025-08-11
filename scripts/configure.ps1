@@ -364,8 +364,20 @@ function Create-StorageSelectionPage {
     $btnTestOneDrive.Location = New-Object System.Drawing.Point(370, 10)
     $btnTestOneDrive.Size = New-Object System.Drawing.Size(120, 30)
     $btnTestOneDrive.Name = "btnTestOneDrive"
+    $btnTestOneDrive.Enabled = $false
     $btnTestOneDrive.Add_Click({ Write-Host "[DEBUG] OneDrive Test Connection button pressed" })
     $pnlOneDrive.Controls.Add($btnTestOneDrive)
+    # Enable Test Connection only if all OneDrive fields are filled
+    $checkOneDriveFields = {
+        if ($txtAppId.Text -and $txtClientSecret.Text -and $txtTenantName.Text) {
+            $btnTestOneDrive.Enabled = $true
+        } else {
+            $btnTestOneDrive.Enabled = $false
+        }
+    }
+    $txtAppId.Add_TextChanged($checkOneDriveFields)
+    $txtClientSecret.Add_TextChanged($checkOneDriveFields)
+    $txtTenantName.Add_TextChanged($checkOneDriveFields)
 
     # S3 Panel
     $pnlS3 = New-Object System.Windows.Forms.Panel
@@ -430,10 +442,23 @@ function Create-StorageSelectionPage {
     $btnTestS3 = New-Object System.Windows.Forms.Button
     $btnTestS3.Text = "Test Connection"
     $btnTestS3.Location = New-Object System.Drawing.Point(370, 10)
-    $btnTestS3.Size = New-Object System.Drawing.Size(120, 30)   
+    $btnTestS3.Size = New-Object System.Drawing.Size(120, 30)
     $btnTestS3.Name = "btnTestS3"
+    $btnTestS3.Enabled = $false
     $btnTestS3.Add_Click({ Write-Host "[DEBUG] S3 Test Connection button pressed" })
     $pnlS3.Controls.Add($btnTestS3)
+    # Enable Test Connection only if all S3 fields are filled
+    $checkS3Fields = {
+        if ($txtAccessKey.Text -and $txtSecretKey.Text -and $txtBucket.Text -and $cmbRegion.SelectedItem) {
+            $btnTestS3.Enabled = $true
+        } else {
+            $btnTestS3.Enabled = $false
+        }
+    }
+    $txtAccessKey.Add_TextChanged($checkS3Fields)
+    $txtSecretKey.Add_TextChanged($checkS3Fields)
+    $txtBucket.Add_TextChanged($checkS3Fields)
+    $cmbRegion.Add_SelectedIndexChanged($checkS3Fields)
     
     # Radio button events to show/hide panels
     $radioLocal.Add_CheckedChanged({
@@ -534,6 +559,30 @@ function Create-DatabasePage {
     $txtPassword.UseSystemPasswordChar = $true
     $txtPassword.Name = "txtPassword"
     $panel.Controls.Add($txtPassword)
+
+    # Test Connection Button
+    $btnTestDb = New-Object System.Windows.Forms.Button
+    $btnTestDb.Text = "Test Connection"
+    $btnTestDb.Location = New-Object System.Drawing.Point(370, 60)
+    $btnTestDb.Size = New-Object System.Drawing.Size(120, 30)
+    $btnTestDb.Name = "btnTestDb"
+    $btnTestDb.Enabled = $false
+    $btnTestDb.Add_Click({ Write-Host "[DEBUG] Database Test Connection button pressed" })
+    $panel.Controls.Add($btnTestDb)
+
+    # Enable Test Connection only if all DB fields are filled
+    $checkDbFields = {
+        if ($cmbDatabaseType.SelectedItem -and $txtServer.Text -and $txtDatabase.Text -and $txtUsername.Text -and $txtPassword.Text) {
+            $btnTestDb.Enabled = $true
+        } else {
+            $btnTestDb.Enabled = $false
+        }
+    }
+    $cmbDatabaseType.Add_SelectedIndexChanged($checkDbFields)
+    $txtServer.Add_TextChanged($checkDbFields)
+    $txtDatabase.Add_TextChanged($checkDbFields)
+    $txtUsername.Add_TextChanged($checkDbFields)
+    $txtPassword.Add_TextChanged($checkDbFields)
     
     return $panel
 }
