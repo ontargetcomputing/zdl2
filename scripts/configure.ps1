@@ -245,7 +245,7 @@ function Create-StorageSelectionPage {
     
     # Storage type radio buttons
     $radioLocal = New-Object System.Windows.Forms.RadioButton
-    $radioLocal.Text = "Local Storage"
+    $radioLocal.Text = "Local Storage Only"
     $radioLocal.Location = New-Object System.Drawing.Point(50, 60)
     $radioLocal.Size = New-Object System.Drawing.Size(200, 20)
     $radioLocal.Checked = $true
@@ -377,37 +377,36 @@ function Create-StorageSelectionPage {
     
     # Radio button events to show/hide panels
     $radioLocal.Add_CheckedChanged({
-        if ($radioLocal.Checked) {
-            $pnlLocal.Visible = $true
-            $pnlLocal.BringToFront()
-            $pnlOneDrive.Visible = $false
-            $pnlS3.Visible = $false
+
+
+        if ($this.Checked) {
+            $parentPanel = $this.Parent  
+            $parentPanel.Controls["pnlLocal"].Visible = $true
+            $parentPanel.Controls["pnlLocal"].BringToFront()
+            $parentPanel.Controls["pnlOneDrive"].Visible = $false
+            $parentPanel.Controls["pnlS3"].Visible = $false            
         }
     })
     
     $radioOneDrive.Add_CheckedChanged({
-        if ($radioOneDrive.Checked) {
-            $pnlLocal.Visible = $false
-            $pnlOneDrive.Visible = $true
-            $pnlOneDrive.BringToFront()
-            $pnlS3.Visible = $false
+        if ($this.Checked) {
+            $parentPanel = $this.Parent  
+            $parentPanel.Controls["pnlLocal"].Visible = $false
+            $parentPanel.Controls["pnlOneDrive"].BringToFront()
+            $parentPanel.Controls["pnlOneDrive"].Visible = $true
+            $parentPanel.Controls["pnlS3"].Visible = $false 
         }
     })
     
     $radioS3.Add_CheckedChanged({
-        if ($radioS3.Checked) {
-            $pnlLocal.Visible = $false
-            $pnlOneDrive.Visible = $false
-            $pnlS3.Visible = $true
-            $pnlS3.BringToFront()
-            [System.Windows.Forms.MessageBox]::Show("YES", "Connection Test", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
-        } else {
-               $pnlLocal.Visible = $false
-            $pnlOneDrive.Visible = $false
-            $pnlS3.Visible = $true
-            $pnlS3.BringToFront()
-            [System.Windows.Forms.MessageBox]::Show("NO", "Connection Test", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
-        }
+        if ($this.Checked) {
+            Write-Host "S3 radio button checked"  
+            $parentPanel = $this.Parent  
+            $parentPanel.Controls["pnlLocal"].Visible = $false
+            $parentPanel.Controls["pnlOneDrive"].Visible = $false
+            $parentPanel.Controls["pnlS3"].BringToFront()
+            $parentPanel.Controls["pnlS3"].Visible = $true   
+        } 
     })
     
     # Browse button event
