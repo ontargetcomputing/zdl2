@@ -369,7 +369,7 @@ function Create-StorageSelectionPage {
     # S3 Panel
     $pnlS3 = New-Object System.Windows.Forms.Panel
     $pnlS3.Location = New-Object System.Drawing.Point(70, 190)
-    $pnlS3.Size = New-Object System.Drawing.Size(650, 450)
+    $pnlS3.Size = New-Object System.Drawing.Size(650, 550)
     $pnlS3.Visible = $false
     $pnlS3.Name = "pnlS3"
     $panel.Controls.Add($pnlS3)
@@ -413,13 +413,13 @@ function Create-StorageSelectionPage {
     
     $lblRegion = New-Object System.Windows.Forms.Label
     $lblRegion.Text = "Region:"
-    $lblRegion.Location = New-Object System.Drawing.Point(0, 180)
+    $lblRegion.Location = New-Object System.Drawing.Point(0, 100)
     $lblRegion.Size = New-Object System.Drawing.Size(100, 25)
     $pnlS3.Controls.Add($lblRegion)
     
     $cmbRegion = New-Object System.Windows.Forms.ComboBox
     $cmbRegion.Items.AddRange(@("us-west-2", "us-east-1", "us-west-1", "eu-west-1", "ap-southeast-1"))
-    $cmbRegion.Location = New-Object System.Drawing.Point(110, 180)
+    $cmbRegion.Location = New-Object System.Drawing.Point(110, 100)
     $cmbRegion.Size = New-Object System.Drawing.Size(200, 30)
     $cmbRegion.DropDownStyle = "DropDownList"
     $cmbRegion.Name = "cmbRegion"
@@ -428,7 +428,7 @@ function Create-StorageSelectionPage {
     # Add Test Connection button to S3 panel
     $btnTestS3 = New-Object System.Windows.Forms.Button
     $btnTestS3.Text = "Test Connection"
-    $btnTestS3.Location = New-Object System.Drawing.Point(370, 10)
+    $btnTestS3.Location = New-Object System.Drawing.Point(110, 280)
     $btnTestS3.Size = New-Object System.Drawing.Size(120, 30)
     $btnTestS3.Name = "btnTestS3"
     $pnlS3.Controls.Add($btnTestS3)
