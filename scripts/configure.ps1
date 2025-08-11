@@ -233,7 +233,7 @@ function Create-ZoomCredentialsPage {
 # Function to create Storage Selection page
 function Create-StorageSelectionPage {
     $panel = New-Object System.Windows.Forms.Panel
-    $panel.Size = New-Object System.Drawing.Size(640, 300)
+    $panel.Size = New-Object System.Drawing.Size(640, 370)
     
     $lblTitle = New-Object System.Windows.Forms.Label
     $lblTitle.Text = "Choose where to store downloaded recordings:"
@@ -314,9 +314,10 @@ function Create-StorageSelectionPage {
     # OneDrive Panel
     $pnlOneDrive = New-Object System.Windows.Forms.Panel
     $pnlOneDrive.Location = New-Object System.Drawing.Point(70, 190)
-    $pnlOneDrive.Size = New-Object System.Drawing.Size(600, 140)
+    $pnlOneDrive.Size = New-Object System.Drawing.Size(600, 180)
     $pnlOneDrive.Visible = $false
     $pnlOneDrive.Name = "pnlOneDrive"
+        $pnlOneDrive.BorderStyle = "FixedSingle"
     $panel.Controls.Add($pnlOneDrive)
     
     # Remove OneDrive folder field
@@ -368,7 +369,7 @@ function Create-StorageSelectionPage {
 
     $script:btnTestOneDrive = New-Object System.Windows.Forms.Button
     $script:btnTestOneDrive.Text = "Test Connection"
-    $script:btnTestOneDrive.Location = New-Object System.Drawing.Point(370, 10)
+    $script:btnTestOneDrive.Location = New-Object System.Drawing.Point(0, 125)
     $script:btnTestOneDrive.Size = New-Object System.Drawing.Size(120, 30)
     $script:btnTestOneDrive.Name = "btnTestOneDrive"
     $script:btnTestOneDrive.Enabled = $false
@@ -415,7 +416,7 @@ function Create-StorageSelectionPage {
     # S3 Panel
     $pnlS3 = New-Object System.Windows.Forms.Panel
     $pnlS3.Location = New-Object System.Drawing.Point(70, 190)
-    $pnlS3.Size = New-Object System.Drawing.Size(650, 550)
+    $pnlS3.Size = New-Object System.Drawing.Size(500, 400)
     $pnlS3.Visible = $false
     $pnlS3.Name = "pnlS3"
     $panel.Controls.Add($pnlS3)
@@ -426,11 +427,11 @@ function Create-StorageSelectionPage {
     $lblAccessKey.Size = New-Object System.Drawing.Size(100, 20)
     $pnlS3.Controls.Add($lblAccessKey)
     
-    $txtAccessKey = New-Object System.Windows.Forms.TextBox
-    $txtAccessKey.Location = New-Object System.Drawing.Point(110, 10)
-    $txtAccessKey.Size = New-Object System.Drawing.Size(250, 20)
-    $txtAccessKey.Name = "txtAccessKey"
-    $pnlS3.Controls.Add($txtAccessKey)
+    $script:txtAccessKey = New-Object System.Windows.Forms.TextBox
+    $script:txtAccessKey.Location = New-Object System.Drawing.Point(110, 10)
+    $script:txtAccessKey.Size = New-Object System.Drawing.Size(250, 20)
+    $script:txtAccessKey.Name = "txtAccessKey"
+    $pnlS3.Controls.Add($script:txtAccessKey)
     
     $lblSecretKey = New-Object System.Windows.Forms.Label
     $lblSecretKey.Text = "Secret Key:"
@@ -438,12 +439,12 @@ function Create-StorageSelectionPage {
     $lblSecretKey.Size = New-Object System.Drawing.Size(100, 20)
     $pnlS3.Controls.Add($lblSecretKey)
     
-    $txtSecretKey = New-Object System.Windows.Forms.TextBox
-    $txtSecretKey.Location = New-Object System.Drawing.Point(110, 40)
-    $txtSecretKey.Size = New-Object System.Drawing.Size(250, 20)
-    $txtSecretKey.UseSystemPasswordChar = $true
-    $txtSecretKey.Name = "txtSecretKey"
-    $pnlS3.Controls.Add($txtSecretKey)
+    $script:txtSecretKey = New-Object System.Windows.Forms.TextBox
+    $script:txtSecretKey.Location = New-Object System.Drawing.Point(110, 40)
+    $script:txtSecretKey.Size = New-Object System.Drawing.Size(250, 20)
+    $script:txtSecretKey.UseSystemPasswordChar = $true
+    $script:txtSecretKey.Name = "txtSecretKey"
+    $pnlS3.Controls.Add($script:txtSecretKey)
     
     $lblBucket = New-Object System.Windows.Forms.Label
     $lblBucket.Text = "Bucket Name:"
@@ -451,11 +452,11 @@ function Create-StorageSelectionPage {
     $lblBucket.Size = New-Object System.Drawing.Size(100, 20)
     $pnlS3.Controls.Add($lblBucket)
     
-    $txtBucket = New-Object System.Windows.Forms.TextBox
-    $txtBucket.Location = New-Object System.Drawing.Point(110, 70)
-    $txtBucket.Size = New-Object System.Drawing.Size(250, 20)
-    $txtBucket.Name = "txtBucket"
-    $pnlS3.Controls.Add($txtBucket)
+    $script:txtBucket = New-Object System.Windows.Forms.TextBox
+    $script:txtBucket.Location = New-Object System.Drawing.Point(110, 70)
+    $script:txtBucket.Size = New-Object System.Drawing.Size(250, 20)
+    $script:txtBucket.Name = "txtBucket"
+    $pnlS3.Controls.Add($script:txtBucket)
     
     $lblRegion = New-Object System.Windows.Forms.Label
     $lblRegion.Text = "Region:"
@@ -463,38 +464,49 @@ function Create-StorageSelectionPage {
     $lblRegion.Size = New-Object System.Drawing.Size(100, 25)
     $pnlS3.Controls.Add($lblRegion)
     
-    $cmbRegion = New-Object System.Windows.Forms.ComboBox
-    $cmbRegion.Items.AddRange(@("us-west-2", "us-east-1", "us-west-1", "eu-west-1", "ap-southeast-1"))
-    $cmbRegion.Location = New-Object System.Drawing.Point(110, 100)
-    $cmbRegion.Size = New-Object System.Drawing.Size(200, 30)
-    $cmbRegion.DropDownStyle = "DropDownList"
-    $cmbRegion.Name = "cmbRegion"
-    $pnlS3.Controls.Add($cmbRegion)
+    $script:cmbRegion = New-Object System.Windows.Forms.ComboBox
+    $script:cmbRegion.Items.AddRange(@("us-west-2", "us-east-1", "us-west-1", "eu-west-1", "ap-southeast-1"))
+    $script:cmbRegion.Location = New-Object System.Drawing.Point(110, 100)
+    $script:cmbRegion.Size = New-Object System.Drawing.Size(200, 30)
+    $script:cmbRegion.DropDownStyle = "DropDownList"
+    $script:cmbRegion.Name = "cmbRegion"
+    $pnlS3.Controls.Add($script:cmbRegion)
     
-    # $lblOneDriveStatus = New-Object System.Windows.Forms.Label
-    # $lblOneDriveStatus.Name = "lblOneDriveStatus"
-    # $lblOneDriveStatus.Location = New-Object System.Drawing.Point(0, 140)
-    # $lblOneDriveStatus.Size = New-Object System.Drawing.Size(400, 40)
-    # $lblOneDriveStatus.Text = ""
-    # $pnlOneDrive.Controls.Add($lblOneDriveStatus)
+    $script:lblS3Status = New-Object System.Windows.Forms.Label
+    $script:lblS3Status.Name = "lblS3Status"
+    $script:lblS3Status.Location = New-Object System.Drawing.Point(0, 130)
+    $script:lblS3Status.Size = New-Object System.Drawing.Size(400, 20)
+    $script:lblS3Status.Text = ""
+    $pnlS3.Controls.Add($script:lblS3Status)
 
-    $btnTestOneDrive = New-Object System.Windows.Forms.Button
-    $btnTestOneDrive.Text = "Test Connection"
-    $btnTestOneDrive.Location = New-Object System.Drawing.Point(370, 10)
-    $btnTestOneDrive.Size = New-Object System.Drawing.Size(120, 30)
-    $btnTestOneDrive.Name = "btnTestOneDrive"
-    $btnTestOneDrive.Enabled = $false
-    $btnTestOneDrive.Add_Click({
-        $btnTestOneDrive.Enabled = $false
-        $lblOneDriveStatus.Text = "Testing OneDrive connection..."
-        $lblOneDriveStatus.ForeColor = [System.Drawing.Color]::Blue
+    $script:btnTestS3 = New-Object System.Windows.Forms.Button
+    $script:btnTestS3.Text = "Test Connection"
+    $script:btnTestS3.Location = New-Object System.Drawing.Point(0, 150)
+    $script:btnTestS3.Size = New-Object System.Drawing.Size(120, 30)
+    $script:btnTestS3.Name = "btnTestS3"
+    $script:btnTestS3.Enabled = $false
+    $script:btnTestS3.Add_Click({
+        $this.Enabled = $false
+        $script:lbls3Status.Text = "Testing S3 connection..."
+        $script:lblS3Status.ForeColor = [System.Drawing.Color]::Blue
         $form.Update()
         Start-Sleep -Milliseconds 1200
-        $lblOneDriveStatus.Text = "SUCCESS: Simulated OneDrive connection. (Replace with real API call)"
-        $lblOneDriveStatus.ForeColor = [System.Drawing.Color]::Green
-        $btnTestOneDrive.Enabled = $true
+        $script:lblS3Status.Text = "SUCCESS: Simulated S3 connection. (Replace with real API call)"
+        $script:lblS3Status.ForeColor = [System.Drawing.Color]::Green
+        $this.Enabled = $true
     })
-    $pnlOneDrive.Controls.Add($btnTestOneDrive)
+    $pnlS3.Controls.Add($script:btnTestS3)
+
+    $checkS3Fields = {
+        if ($script:txtAccessKey.Text -and $script:txtSecretKey.Text -and $script:txtBucket.Text) {
+            $script:btnTestS3.Enabled = $true
+        } else {
+            $script:btnTestS3.Enabled = $false
+        }
+    }
+    $script:txtAccessKey.Add_TextChanged($checkS3Fields)
+    $script:txtSecretKey.Add_TextChanged($checkS3Fields)
+    $script:txtBucket.Add_TextChanged($checkS3Fields)
 
     
     $radioOneDrive.Add_CheckedChanged({
