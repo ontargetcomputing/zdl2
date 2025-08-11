@@ -245,7 +245,7 @@ function Create-StorageSelectionPage {
     
     # Storage type radio buttons
     $radioLocal = New-Object System.Windows.Forms.RadioButton
-    $radioLocal.Text = "Local Storage Only (%AppData%\\Local\\ZoomDownloader)"
+    $radioLocal.Text = "Local Storage Only"
     $radioLocal.Location = New-Object System.Drawing.Point(50, 60)
     $radioLocal.Size = New-Object System.Drawing.Size(400, 20)
     $radioLocal.Checked = $true
@@ -276,31 +276,20 @@ function Create-StorageSelectionPage {
     $pnlLocal.Visible = $true  # Always visible
     $panel.Controls.Add($pnlLocal)
     
+    # Remove download path textbox and browse button
+    # Only show label and note
     $lblLocalPath = New-Object System.Windows.Forms.Label
-    $lblLocalPath.Text = "Download Path:"  
+    $lblLocalPath.Text = "Download Path: %AppData%\\Local\\ZoomDownloader"
     $lblLocalPath.Location = New-Object System.Drawing.Point(0, 10)
-    $lblLocalPath.Size = New-Object System.Drawing.Size(100, 20)
+    $lblLocalPath.Size = New-Object System.Drawing.Size(350, 20)
     $pnlLocal.Controls.Add($lblLocalPath)
 
     $lblLocalNote = New-Object System.Windows.Forms.Label
-    $lblLocalNote.Text = "(Default: %AppData%\\Local\\ZoomDownloader)"
-    $lblLocalNote.Location = New-Object System.Drawing.Point(110, 35)
-    $lblLocalNote.Size = New-Object System.Drawing.Size(300, 18)
+    $lblLocalNote.Text = "(This location is hardcoded and cannot be changed)"
+    $lblLocalNote.Location = New-Object System.Drawing.Point(0, 35)
+    $lblLocalNote.Size = New-Object System.Drawing.Size(350, 18)
     $lblLocalNote.ForeColor = [System.Drawing.Color]::Gray
     $pnlLocal.Controls.Add($lblLocalNote)
-    
-    $txtLocalPath = New-Object System.Windows.Forms.TextBox
-    $txtLocalPath.Location = New-Object System.Drawing.Point(110, 10)
-    $txtLocalPath.Size = New-Object System.Drawing.Size(250, 20)
-    $txtLocalPath.Text = "C:\ZoomDownloads"
-    $txtLocalPath.Name = "txtLocalPath"
-    $pnlLocal.Controls.Add($txtLocalPath)
-    
-    $btnBrowse = New-Object System.Windows.Forms.Button
-    $btnBrowse.Text = "Browse..."
-    $btnBrowse.Location = New-Object System.Drawing.Point(370, 8)
-    $btnBrowse.Size = New-Object System.Drawing.Size(75, 25)
-    $pnlLocal.Controls.Add($btnBrowse)
     
     # OneDrive Panel
     $pnlOneDrive = New-Object System.Windows.Forms.Panel
