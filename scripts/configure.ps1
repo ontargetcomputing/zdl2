@@ -428,7 +428,7 @@ function Create-StorageSelectionPage {
     # Add Test Connection button to S3 panel
     $btnTestS3 = New-Object System.Windows.Forms.Button
     $btnTestS3.Text = "Test Connection"
-    $btnTestS3.Location = New-Object System.Drawing.Point(0, 180)
+    $btnTestS3.Location = New-Object System.Drawing.Point(370, 10)
     $btnTestS3.Size = New-Object System.Drawing.Size(120, 30)
     $btnTestS3.Name = "btnTestS3"
     $pnlS3.Controls.Add($btnTestS3)
