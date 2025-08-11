@@ -369,7 +369,7 @@ function Create-StorageSelectionPage {
     # S3 Panel
     $pnlS3 = New-Object System.Windows.Forms.Panel
     $pnlS3.Location = New-Object System.Drawing.Point(70, 190)
-    $pnlS3.Size = New-Object System.Drawing.Size(650, 380)
+    $pnlS3.Size = New-Object System.Drawing.Size(650, 450)
     $pnlS3.Visible = $false
     $pnlS3.Name = "pnlS3"
     $panel.Controls.Add($pnlS3)
@@ -413,13 +413,13 @@ function Create-StorageSelectionPage {
     
     $lblRegion = New-Object System.Windows.Forms.Label
     $lblRegion.Text = "Region:"
-    $lblRegion.Location = New-Object System.Drawing.Point(0, 130)
+    $lblRegion.Location = New-Object System.Drawing.Point(0, 180)
     $lblRegion.Size = New-Object System.Drawing.Size(100, 25)
     $pnlS3.Controls.Add($lblRegion)
     
     $cmbRegion = New-Object System.Windows.Forms.ComboBox
     $cmbRegion.Items.AddRange(@("us-west-2", "us-east-1", "us-west-1", "eu-west-1", "ap-southeast-1"))
-    $cmbRegion.Location = New-Object System.Drawing.Point(110, 130)
+    $cmbRegion.Location = New-Object System.Drawing.Point(110, 180)
     $cmbRegion.Size = New-Object System.Drawing.Size(200, 30)
     $cmbRegion.DropDownStyle = "DropDownList"
     $cmbRegion.Name = "cmbRegion"
