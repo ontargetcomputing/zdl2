@@ -1,3 +1,6 @@
+using module ../Modules/Zoom/Classes/ZoomService.psm1
+using module ../Modules/Configuration/Classes/ZDAConfiguration.psm1
+
 # Load Windows Forms assembly
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
@@ -33,7 +36,7 @@ $progressBar = New-Object System.Windows.Forms.ProgressBar
 $progressBar.Location = New-Object System.Drawing.Point(20, 20)
 $progressBar.Size = New-Object System.Drawing.Size(540, 20)
 $progressBar.Minimum = 1
-$progressBar.Maximum = 5  # Changed to 5 pages total
+$progressBar.Maximum = 6  # Changed to 6 pages total
 $progressBar.Value = 1
 $form.Controls.Add($progressBar)
 
@@ -85,7 +88,8 @@ $pageTitles = @{
     2 = "Zoom Credentials"
     3 = "Storage Selection"
     4 = "Database Configuration"
-    5 = "Setup Summary"
+    5 = "Schedule Task"
+    6 = "Setup Summary"
 }
 
 # Function to create Welcome page
@@ -171,11 +175,6 @@ function Create-ZoomCredentialsPage {
     $script:btnTestZoom.Size = New-Object System.Drawing.Size(100, 25)
     $panel.Controls.Add($script:btnTestZoom)
 
-    # # Show message box when Test Connection is clicked
-    # $script:btnTestZoom.Add_Click({
-    #     [System.Windows.Forms.MessageBox]::Show("Zoom Connection Tested", "Connection Test", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
-    # })
-
     # Enable Test Connection only if all fields are filled
     $checkFields = {
         if ($script:txtApiKey.Text -and $script:txtApiSecret.Text -and $script:txtAccountId.Text) {
@@ -211,7 +210,7 @@ function Create-ZoomCredentialsPage {
             $result = Test-ZoomConnection -ApiKey $apiKey -ApiSecret $apiSecret -AccountId $accountId
 
             if ($result.Success) {
-                $script:lblTestStatus.Text = "SUCCESS: Connection successful! Account: $($result.AccountName)"
+                $script:lblTestStatus.Text = "SUCCESS: Connection successful!"
                 $script:lblTestStatus.ForeColor = [System.Drawing.Color]::Green
             } else {
                 $script:lblTestStatus.Text = "ERROR: $($result.ErrorMessage)"
@@ -611,12 +610,78 @@ function Create-SummaryPage {
     return $panel
 }
 
+# Function to create Schedule page
+function Create-SchedulePage {
+    $panel = New-Object System.Windows.Forms.Panel
+    $panel.Size = New-Object System.Drawing.Size(640, 300)
+
+    $lblTitle = New-Object System.Windows.Forms.Label
+    $lblTitle.Text = "Schedule PowerShell Task:"
+    $lblTitle.Font = New-Object System.Drawing.Font("Microsoft Sans Serif", 10, [System.Drawing.FontStyle]::Bold)
+    $lblTitle.Location = New-Object System.Drawing.Point(30, 20)
+    $lblTitle.Size = New-Object System.Drawing.Size(400, 20)
+    $panel.Controls.Add($lblTitle)
+
+    $lblDesc = New-Object System.Windows.Forms.Label
+    $lblDesc.Text = "Choose when the Zoom Downloader should run. Select a default schedule or enter a custom PowerShell schedule expression."
+    $lblDesc.Location = New-Object System.Drawing.Point(30, 50)
+    $lblDesc.Size = New-Object System.Drawing.Size(580, 40)
+    $panel.Controls.Add($lblDesc)
+
+    $lblSchedule = New-Object System.Windows.Forms.Label
+    $lblSchedule.Text = "Schedule:"
+    $lblSchedule.Location = New-Object System.Drawing.Point(30, 100)
+    $lblSchedule.Size = New-Object System.Drawing.Size(100, 20)
+    $panel.Controls.Add($lblSchedule)
+
+    $cmbSchedule = New-Object System.Windows.Forms.ComboBox
+    $cmbSchedule.Items.AddRange(@(
+        "Hourly",
+        "Daily at midnight",
+        "Every 5 minutes",
+        "Custom..."
+    ))
+    $cmbSchedule.Location = New-Object System.Drawing.Point(140, 100)
+    $cmbSchedule.Size = New-Object System.Drawing.Size(200, 25)
+    $cmbSchedule.DropDownStyle = "DropDownList"
+    $cmbSchedule.Name = "cmbSchedule"
+    $panel.Controls.Add($cmbSchedule)
+
+    $lblCustom = New-Object System.Windows.Forms.Label
+    $lblCustom.Text = "Custom PowerShell Schedule Expression:"
+    $lblCustom.Location = New-Object System.Drawing.Point(30, 140)
+    $lblCustom.Size = New-Object System.Drawing.Size(300, 20)
+    $lblCustom.Visible = $false
+    $panel.Controls.Add($lblCustom)
+
+    $txtCustom = New-Object System.Windows.Forms.TextBox
+    $txtCustom.Location = New-Object System.Drawing.Point(30, 170)
+    $txtCustom.Size = New-Object System.Drawing.Size(400, 60)
+    $txtCustom.Multiline = $true
+    $txtCustom.ScrollBars = "Vertical"
+    $txtCustom.Name = "txtCustom"
+    $txtCustom.Visible = $false
+    $panel.Controls.Add($txtCustom)
+
+    $cmbSchedule.Add_SelectedIndexChanged({
+        if ($cmbSchedule.SelectedItem -eq "Custom...") {
+            $lblCustom.SetVisible($true)
+            $txtCustom.SetVisible($true)
+        } else {
+            $lblCustom.SetVisible($false)
+            $txtCustom.SetVisible($false)
+        }
+    })
+
+    return $panel
+}
 # Page controls array
 $pageControls = @(
     (Create-WelcomePage),
     (Create-ZoomCredentialsPage),
     (Create-StorageSelectionPage),
     (Create-DatabasePage),
+    (Create-SchedulePage),
     (Create-SummaryPage)
 )
 
@@ -629,11 +694,11 @@ function Show-CurrentPage {
     
     # Update button states
     $btnPrevious.Enabled = $script:currentPage -gt 1
-    $btnNext.Visible = $script:currentPage -lt 5
-    $btnFinish.Visible = $script:currentPage -eq 5
-    
+    $btnNext.Visible = $script:currentPage -lt 6
+    $btnFinish.Visible = $script:currentPage -eq 6
+
     # Update summary if on last page
-    if ($script:currentPage -eq 5) {
+    if ($script:currentPage -eq 6) {
         Update-Summary
     }
 }
@@ -822,7 +887,13 @@ function Test-ZoomConnection {
         [string]$ApiSecret,
         [string]$AccountId
     )
-    
+
+    $configuration =  [PSCustomObject]@{
+        AccountID    = $AccountId
+        ClientID     = $ApiKey
+        ClientSecret = $ApiSecret
+    }
+  
     try {
         # Simulate API call delay
         Start-Sleep -Milliseconds 1500
@@ -838,28 +909,26 @@ function Test-ZoomConnection {
             }
         }
         
-        # Simulate successful connection for demo
-        if ($ApiKey.Length -gt 10 -and $ApiSecret.Length -gt 10) {
-            return @{
-                Success = $true
-                ErrorMessage = $null
-                AccountName = "Demo Account (Replace with real API call)"
-            }
-        } else {
-            return @{
-                Success = $false
-                ErrorMessage = "Invalid credentials format"
-                AccountName = $null
-            }
-        }
+        $config = @{
+            zoom     = $configuration
+        } 
+        $zoomService = [ZoomService]::new($config)
+        $zoomService.GetAccessToken()
+        return @{
+            Success = $true
+            ErrorMessage = "Connection to Zoom was Successful"
+            AccountName = $null
+        }        
     }
     catch {
         return @{
             Success = $false
-            ErrorMessage = $_.Exception.Message
+            ErrorMessage = "Connection to Zoom was Unsuccessful $($_.Exception.Message)"
             AccountName = $null
-        }
+        }         
+        Write-Host "Unable to authenticate to Zoom $($_.Exception.Message)"
     }
+    
 }
 
 # Show initial page
