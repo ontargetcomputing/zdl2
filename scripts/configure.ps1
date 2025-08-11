@@ -314,7 +314,7 @@ function Create-StorageSelectionPage {
     # OneDrive Panel
     $pnlOneDrive = New-Object System.Windows.Forms.Panel
     $pnlOneDrive.Location = New-Object System.Drawing.Point(70, 190)
-    $pnlOneDrive.Size = New-Object System.Drawing.Size(600, 90)
+    $pnlOneDrive.Size = New-Object System.Drawing.Size(600, 140)
     $pnlOneDrive.Visible = $false
     $pnlOneDrive.Name = "pnlOneDrive"
     $panel.Controls.Add($pnlOneDrive)
@@ -359,6 +359,13 @@ function Create-StorageSelectionPage {
     $pnlOneDrive.Controls.Add($script:txtTenantName)
     
     # Add Test Connection button to OneDrive panel
+    $script:lblOneDriveStatus = New-Object System.Windows.Forms.Label
+    $script:lblOneDriveStatus.Name = "lblOneDriveStatus"
+    $script:lblOneDriveStatus.Location = New-Object System.Drawing.Point(0, 95)
+    $script:lblOneDriveStatus.Size = New-Object System.Drawing.Size(400, 35)
+    $script:lblOneDriveStatus.Text = ""
+    $pnlOneDrive.Controls.Add($script:lblOneDriveStatus)
+
     $script:btnTestOneDrive = New-Object System.Windows.Forms.Button
     $script:btnTestOneDrive.Text = "Test Connection"
     $script:btnTestOneDrive.Location = New-Object System.Drawing.Point(370, 10)
@@ -371,34 +378,27 @@ function Create-StorageSelectionPage {
         $ClientSecret = $script:txtClientSecret.Text.Trim()
         $TenantName = $script:txtTenantName.Text.Trim()
 
-        $script:lblTestStatus.Text = "Testing connection..."
-        $script:lblTestStatus.ForeColor = [System.Drawing.Color]::Blue
+        $script:lblOneDriveStatus.Text = "Testing connection..."
+        $script:lblOneDriveStatus.ForeColor = [System.Drawing.Color]::Blue
         $script:btnTestOneDrive.Enabled = $false
         $form.Update()
 
         try {
             $oneDriveFileStorage = [OneDriveFileStorage]::new($AppId, $ClientSecret, $TenantName)
             $oneDriveFileStorage.Authenticate()
-            Write-Host "FileStorage Authentications Worked"
-            [System.Windows.Forms.MessageBox]::Show("FileStorage Authentication Worked.", "Message Box", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+            Write-Host "SUCCESS: Simulated OneDrive connection."
+            $script:lblOneDriveStatus.Text = "SUCCESS: OneDrive connection."
+            $script:lblOneDriveStatus.ForeColor = [System.Drawing.Color]::Green
         }
         catch {
-            $script:lblTestStatus.Text = "ERROR: Connection test failed, $($_.Exception.Message)"
-            $script:lblTestStatus.ForeColor = [System.Drawing.Color]::Red            
+            $script:lblOneDriveStatus.Text = "ERROR: Connection test failed, $($_.Exception.Message)"
+            $script:lblOneDriveStatus.ForeColor = [System.Drawing.Color]::Red  
         }
         finally {
             $script:btnTestOneDrive.Enabled = $true
         }
-        if ($result.Success) {
-            $script:lblTestStatus.Text = "SUCCESS: Connection successful!"
-            $script:lblTestStatus.ForeColor = [System.Drawing.Color]::Green
-        } else {
-            $script:lblTestStatus.Text = "ERROR: $($result.ErrorMessage)"
-            $script:lblTestStatus.ForeColor = [System.Drawing.Color]::Red
-        }
-
     })
-    
+
     $pnlOneDrive.Controls.Add($script:btnTestOneDrive)
     # Enable Test Connection only if all OneDrive fields are filled
     $checkOneDriveFields = {
@@ -471,33 +471,31 @@ function Create-StorageSelectionPage {
     $cmbRegion.Name = "cmbRegion"
     $pnlS3.Controls.Add($cmbRegion)
     
-    # Add Test Connection button to S3 panel
-    $btnTestS3 = New-Object System.Windows.Forms.Button
-    $btnTestS3.Text = "Test Connection"
-    $btnTestS3.Location = New-Object System.Drawing.Point(370, 10)
-    $btnTestS3.Size = New-Object System.Drawing.Size(120, 30)
-    $btnTestS3.Name = "btnTestS3"
-    $btnTestS3.Enabled = $false
-    $btnTestS3.Add_Click({ Write-Host "[DEBUG] S3 Test Connection button pressed" })
-    $pnlS3.Controls.Add($btnTestS3)
-    # Enable Test Connection only if all S3 fields are filled
-    $checkS3Fields = {
-        if ($txtAccessKey.Text -and $txtSecretKey.Text -and $txtBucket.Text -and $cmbRegion.SelectedItem) {
-            $btnTestS3.Enabled = $true
-        } else {
-            $btnTestS3.Enabled = $false
-        }
-    }
-    $txtAccessKey.Add_TextChanged($checkS3Fields)
-    $txtSecretKey.Add_TextChanged($checkS3Fields)
-    $txtBucket.Add_TextChanged($checkS3Fields)
-    $cmbRegion.Add_SelectedIndexChanged($checkS3Fields)
-    
-    # Radio button events to show/hide panels
-    $radioLocal.Add_CheckedChanged({
-        $parentPanel = $this.Parent
-        $parentPanel.Controls["pnlLocal"].Visible = $true #always visible
+    # $lblOneDriveStatus = New-Object System.Windows.Forms.Label
+    # $lblOneDriveStatus.Name = "lblOneDriveStatus"
+    # $lblOneDriveStatus.Location = New-Object System.Drawing.Point(0, 140)
+    # $lblOneDriveStatus.Size = New-Object System.Drawing.Size(400, 40)
+    # $lblOneDriveStatus.Text = ""
+    # $pnlOneDrive.Controls.Add($lblOneDriveStatus)
+
+    $btnTestOneDrive = New-Object System.Windows.Forms.Button
+    $btnTestOneDrive.Text = "Test Connection"
+    $btnTestOneDrive.Location = New-Object System.Drawing.Point(370, 10)
+    $btnTestOneDrive.Size = New-Object System.Drawing.Size(120, 30)
+    $btnTestOneDrive.Name = "btnTestOneDrive"
+    $btnTestOneDrive.Enabled = $false
+    $btnTestOneDrive.Add_Click({
+        $btnTestOneDrive.Enabled = $false
+        $lblOneDriveStatus.Text = "Testing OneDrive connection..."
+        $lblOneDriveStatus.ForeColor = [System.Drawing.Color]::Blue
+        $form.Update()
+        Start-Sleep -Milliseconds 1200
+        $lblOneDriveStatus.Text = "SUCCESS: Simulated OneDrive connection. (Replace with real API call)"
+        $lblOneDriveStatus.ForeColor = [System.Drawing.Color]::Green
+        $btnTestOneDrive.Enabled = $true
     })
+    $pnlOneDrive.Controls.Add($btnTestOneDrive)
+
     
     $radioOneDrive.Add_CheckedChanged({
         $parentPanel = $this.Parent

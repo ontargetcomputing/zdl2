@@ -60,7 +60,7 @@ class OneDriveFileStorage : AbstractFileStorage {
           # Catch block to handle the exception
           Write-Host "Unable to Authenticate: $($_.Exception.Message)"
           $errorMessage = "Unable to authenticate"
-          $exception = New-Object System.Exception($errorMessage)
+          $exception = New-Object System.Exception($_.Exception.Message)
           throw $exception
         }
   
