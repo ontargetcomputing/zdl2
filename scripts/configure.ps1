@@ -232,7 +232,8 @@ function Create-ZoomCredentialsPage {
             $script:btnTestZoom.Enabled = $true
         }
     })
-
+    
+    $checkFields.Invoke()
     return $panel
 }
 
@@ -595,6 +596,7 @@ function Create-DatabasePage {
     $script:txtServer = New-Object System.Windows.Forms.TextBox
     $script:txtServer.Location = New-Object System.Drawing.Point(130, 100)
     $script:txtServer.Size = New-Object System.Drawing.Size(200, 20)
+    $script:txtServer.Text = $user_config.database.server
     $script:txtServer.Name = "txtServer"
     $panel.Controls.Add($script:txtServer)
     
@@ -610,6 +612,7 @@ function Create-DatabasePage {
     $script:txtPort.Location = New-Object System.Drawing.Point(130, 140)
     $script:txtPort.Size = New-Object System.Drawing.Size(200, 20)
     $script:txtPort.Name = "txtPort"
+    $script:txtPort.Text = $user_config.database.port
     $panel.Controls.Add($script:txtPort)
 
     # Database Name
@@ -623,6 +626,7 @@ function Create-DatabasePage {
     $script:txtDatabase.Location = New-Object System.Drawing.Point(130, 180)
     $script:txtDatabase.Size = New-Object System.Drawing.Size(200, 20)
     $script:txtDatabase.Name = "txtDatabase"
+    $script:txtDatabase.Text = $user_config.database.database
     $panel.Controls.Add($script:txtDatabase)
 
     # Schema Name
@@ -636,6 +640,7 @@ function Create-DatabasePage {
     $script:txtSchema.Location = New-Object System.Drawing.Point(130, 220)
     $script:txtSchema.Size = New-Object System.Drawing.Size(200, 20)
     $script:txtSchema.Name = "txtSchema"
+    $script:txtSchema.Text = $user_config.database.schema
     $panel.Controls.Add($script:txtSchema)
     
     # Username
@@ -649,6 +654,7 @@ function Create-DatabasePage {
     $script:txtUsername.Location = New-Object System.Drawing.Point(130, 260)
     $script:txtUsername.Size = New-Object System.Drawing.Size(200, 20)
     $script:txtUsername.Name = "txtUsername"
+    $script:txtUsername.Text = $user_config.database.userid
     $panel.Controls.Add($script:txtUsername)
     
     # Password
@@ -663,6 +669,7 @@ function Create-DatabasePage {
     $script:txtPassword.Size = New-Object System.Drawing.Size(200, 20)
     $script:txtPassword.UseSystemPasswordChar = $true
     $script:txtPassword.Name = "txtPassword"
+    $script:txtPassword.Text = $user_config.database.password
     $panel.Controls.Add($script:txtPassword)
 
     $script:lblDbStatus = New-Object System.Windows.Forms.Label
@@ -730,6 +737,7 @@ function Create-DatabasePage {
     $script:txtUsername.Add_TextChanged($checkDbFields)
     $script:txtPassword.Add_TextChanged($checkDbFields)
     
+    $checkDbFields.Invoke()
     return $panel
 }
 
@@ -925,7 +933,9 @@ function Validate-CurrentPage {
         4 { # Database
             $currentPanel = $pageControls[3]
             $server = $currentPanel.Controls["txtServer"].Text.Trim()
+            $port = $currentPanel.Controls["txtPort"].Text.Trim()
             $database = $currentPanel.Controls["txtDatabase"].Text.Trim()
+            $schema = $currentPanel.Controls["txtSchema"].Text.Trim()
             $username = $currentPanel.Controls["txtUsername"].Text.Trim()
             $password = $currentPanel.Controls["txtPassword"].Text.Trim()
  
@@ -933,13 +943,31 @@ function Validate-CurrentPage {
                 [System.Windows.Forms.MessageBox]::Show("Server is required.", "Validation Error")
                 return $false
             }
+            if ([string]::IsNullOrWhiteSpace($port)) {
+                [System.Windows.Forms.MessageBox]::Show("Port is required.", "Validation Error")
+                return $false
+            }
             if ([string]::IsNullOrWhiteSpace($database)) {
                 [System.Windows.Forms.MessageBox]::Show("Database name is required.", "Validation Error")
                 return $false
             }
-            
+            if ([string]::IsNullOrWhiteSpace($schema)) {
+                [System.Windows.Forms.MessageBox]::Show("Schema is required.", "Validation Error")
+                return $false
+            }
+            if ([string]::IsNullOrWhiteSpace($username)) {
+                [System.Windows.Forms.MessageBox]::Show("Username is required.", "Validation Error")
+                return $false
+            }            
+            if ([string]::IsNullOrWhiteSpace($password)) {
+                [System.Windows.Forms.MessageBox]::Show("Password is required.", "Validation Error")
+                return $false
+            }
+
             $global:Config.Database.Server = $server
+            $global:Config.Database.Port = $port
             $global:Config.Database.Database = $database
+            $global:Config.Database.Schema = $schema
             $global:Config.Database.Username = $username
             $global:Config.Database.Password = $password
         }
@@ -1028,10 +1056,19 @@ $btnFinish.Add_Click({
             }               
         }
 
+        $databaseConfig = @{
+            server = $global:Config.Database.Server
+            port = $global:Config.Database.Port
+            database = $global:Config.Database.Database
+            schema = $global:Config.Database.Schema
+            userid = $global:Config.Database.Username
+            password = $global:Config.Database.Password
+        }
+
         $config = @{
             zoom     = $zoomConfig
             storage  = $storageConfig
-            # office365 = $office365Config
+            database = $databaseConfig
             # schedule = $schedule
             # accounts = $AccountsList.text
             #sqlserver = $sqlserver
