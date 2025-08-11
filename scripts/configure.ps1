@@ -15,7 +15,7 @@ $script:currentPage = 1
 # Create main form
 $form = New-Object System.Windows.Forms.Form
 $form.Text = "Zoom Downloader Setup Wizard"
-$form.Size = New-Object System.Drawing.Size(700, 650)
+$form.Size = New-Object System.Drawing.Size(700, 480)
 $form.StartPosition = "CenterScreen"
 $form.FormBorderStyle = "FixedDialog"
 $form.MaximizeBox = $false
@@ -48,34 +48,34 @@ $form.Controls.Add($lblPageTitle)
 # Content panel
 $pnlContent = New-Object System.Windows.Forms.Panel
 $pnlContent.Location = New-Object System.Drawing.Point(20, 90)
-$pnlContent.Size = New-Object System.Drawing.Size(640, 420)
+$pnlContent.Size = New-Object System.Drawing.Size(640, 300)
 $pnlContent.BorderStyle = "FixedSingle"
 $form.Controls.Add($pnlContent)
 
 # Buttons
 $btnPrevious = New-Object System.Windows.Forms.Button
 $btnPrevious.Text = "< Previous"
-$btnPrevious.Location = New-Object System.Drawing.Point(290, 540)
+$btnPrevious.Location = New-Object System.Drawing.Point(260, 400)
 $btnPrevious.Size = New-Object System.Drawing.Size(80, 30)
 $btnPrevious.Enabled = $false
 $form.Controls.Add($btnPrevious)
 
 $btnNext = New-Object System.Windows.Forms.Button
 $btnNext.Text = "Next >"
-$btnNext.Location = New-Object System.Drawing.Point(380, 540)
+$btnNext.Location = New-Object System.Drawing.Point(350, 400)
 $btnNext.Size = New-Object System.Drawing.Size(80, 30)
 $form.Controls.Add($btnNext)
 
 $btnFinish = New-Object System.Windows.Forms.Button
 $btnFinish.Text = "Finish"
-$btnFinish.Location = New-Object System.Drawing.Point(470, 540)
+$btnFinish.Location = New-Object System.Drawing.Point(440, 400)
 $btnFinish.Size = New-Object System.Drawing.Size(80, 30)
 $btnFinish.Visible = $false
 $form.Controls.Add($btnFinish)
 
 $btnCancel = New-Object System.Windows.Forms.Button
 $btnCancel.Text = "Cancel"
-$btnCancel.Location = New-Object System.Drawing.Point(200, 540)
+$btnCancel.Location = New-Object System.Drawing.Point(170, 400)
 $btnCancel.Size = New-Object System.Drawing.Size(80, 30)
 $form.Controls.Add($btnCancel)
 
@@ -91,7 +91,7 @@ $pageTitles = @{
 # Function to create Welcome page
 function Create-WelcomePage {
     $panel = New-Object System.Windows.Forms.Panel
-    $panel.Size = New-Object System.Drawing.Size(640, 320)
+    $panel.Size = New-Object System.Drawing.Size(640, 200)
     
     $lblWelcome = New-Object System.Windows.Forms.Label
     $lblWelcome.Text = "Welcome to the Zoom Downloader Setup Wizard!"
@@ -113,7 +113,7 @@ function Create-WelcomePage {
 # Function to create Zoom Credentials page
 function Create-ZoomCredentialsPage {
     $panel = New-Object System.Windows.Forms.Panel
-    $panel.Size = New-Object System.Drawing.Size(640, 420)
+    $panel.Size = New-Object System.Drawing.Size(640, 300)
     
     # API Key
     $lblApiKey = New-Object System.Windows.Forms.Label
@@ -233,7 +233,7 @@ function Create-ZoomCredentialsPage {
 # Function to create Storage Selection page
 function Create-StorageSelectionPage {
     $panel = New-Object System.Windows.Forms.Panel
-    $panel.Size = New-Object System.Drawing.Size(640, 420)
+    $panel.Size = New-Object System.Drawing.Size(640, 300)
     
     $lblTitle = New-Object System.Windows.Forms.Label
     $lblTitle.Text = "Choose where to store downloaded recordings:"
@@ -314,7 +314,7 @@ function Create-StorageSelectionPage {
     # OneDrive Panel
     $pnlOneDrive = New-Object System.Windows.Forms.Panel
     $pnlOneDrive.Location = New-Object System.Drawing.Point(70, 190)
-    $pnlOneDrive.Size = New-Object System.Drawing.Size(600, 120)
+    $pnlOneDrive.Size = New-Object System.Drawing.Size(600, 90)
     $pnlOneDrive.Visible = $false
     $pnlOneDrive.Name = "pnlOneDrive"
     $panel.Controls.Add($pnlOneDrive)
@@ -369,7 +369,7 @@ function Create-StorageSelectionPage {
     # S3 Panel
     $pnlS3 = New-Object System.Windows.Forms.Panel
     $pnlS3.Location = New-Object System.Drawing.Point(70, 190)
-    $pnlS3.Size = New-Object System.Drawing.Size(600, 170)
+    $pnlS3.Size = New-Object System.Drawing.Size(600, 120)
     $pnlS3.Visible = $false
     $pnlS3.Name = "pnlS3"
     $panel.Controls.Add($pnlS3)
@@ -456,7 +456,7 @@ function Create-StorageSelectionPage {
 # Function to create Database Configuration page
 function Create-DatabasePage {
     $panel = New-Object System.Windows.Forms.Panel
-    $panel.Size = New-Object System.Drawing.Size(640, 420)
+    $panel.Size = New-Object System.Drawing.Size(640, 300)
     
     $lblTitle = New-Object System.Windows.Forms.Label
     $lblTitle.Text = "Database Configuration:"
