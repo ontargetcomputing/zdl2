@@ -3,16 +3,18 @@ using module ../Modules/Zoom/Classes/ZoomService.psm1
 using module ../Modules/Configuration/Classes/ZDAConfiguration.psm1
 using module ../Modules/Database/Classes/SQLServerDatabase.psm1
 
+$configuration = [ZDAConfiguration]::new()
+$configuration.StartTranscript("configure")
+
+$user_config = $configuration.ReadUserConfiguration()
+
+$taskName = "Zoomdownloader"
+
+
 # Load Windows Forms assembly
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
-# Global configuration storage
-$global:Config = @{
-    Zoom = @{}
-    Database = @{}
-    Storage = @{}
-}
 
 # Current page tracking
 $script:currentPage = 1
@@ -129,10 +131,11 @@ function Create-ZoomCredentialsPage {
     $panel.Controls.Add($lblApiKey)
     
     $script:txtApiKey = New-Object System.Windows.Forms.TextBox
-    $txtApiKey.Location = New-Object System.Drawing.Point(200, 30)
-    $txtApiKey.Size = New-Object System.Drawing.Size(300, 20)
-    $txtApiKey.Name = "txtApiKey"
-    $panel.Controls.Add($txtApiKey)
+    $script:txtApiKey.Location = New-Object System.Drawing.Point(200, 30)
+    $script:txtApiKey.Size = New-Object System.Drawing.Size(300, 20)
+    $script:txtApiKey.Name = "txtApiKey"
+    $script:txtApiKey.text = $user_config.zoom.clientId
+    $panel.Controls.Add($script:txtApiKey)
     
     # API Secret
     $lblApiSecret = New-Object System.Windows.Forms.Label
@@ -142,11 +145,12 @@ function Create-ZoomCredentialsPage {
     $panel.Controls.Add($lblApiSecret)
     
     $script:txtApiSecret = New-Object System.Windows.Forms.TextBox
-    $txtApiSecret.Location = New-Object System.Drawing.Point(200, 70)
-    $txtApiSecret.Size = New-Object System.Drawing.Size(300, 20)
-    $txtApiSecret.UseSystemPasswordChar = $true
-    $txtApiSecret.Name = "txtApiSecret"
-    $panel.Controls.Add($txtApiSecret)
+    $script:txtApiSecret.Location = New-Object System.Drawing.Point(200, 70)
+    $script:txtApiSecret.Size = New-Object System.Drawing.Size(300, 20)
+    $script:txtApiSecret.UseSystemPasswordChar = $true
+    $script:txtApiSecret.Name = "txtApiSecret"
+    $script:txtApiSecret.text = $user_config.zoom.clientSecret
+    $panel.Controls.Add($script:txtApiSecret)
     
     # Account ID
     $lblAccountId = New-Object System.Windows.Forms.Label
@@ -156,10 +160,11 @@ function Create-ZoomCredentialsPage {
     $panel.Controls.Add($lblAccountId)
     
     $script:txtAccountId = New-Object System.Windows.Forms.TextBox
-    $txtAccountId.Location = New-Object System.Drawing.Point(200, 110)
-    $txtAccountId.Size = New-Object System.Drawing.Size(300, 20)
-    $txtAccountId.Name = "txtAccountId"
-    $panel.Controls.Add($txtAccountId)
+    $script:txtAccountId.Location = New-Object System.Drawing.Point(200, 110)
+    $script:txtAccountId.Size = New-Object System.Drawing.Size(300, 20)
+    $script:txtAccountId.Name = "txtAccountId"
+    $script:txtAccountId.text = $user_config.zoom.accountId
+    $panel.Controls.Add($script:txtAccountId)
 
     # Status label (add before button)
     $script:lblTestStatus = New-Object System.Windows.Forms.Label
@@ -227,7 +232,7 @@ function Create-ZoomCredentialsPage {
             $script:btnTestZoom.Enabled = $true
         }
     })
-    
+
     return $panel
 }
 
@@ -318,7 +323,6 @@ function Create-StorageSelectionPage {
     $pnlOneDrive.Size = New-Object System.Drawing.Size(600, 180)
     $pnlOneDrive.Visible = $false
     $pnlOneDrive.Name = "pnlOneDrive"
-        $pnlOneDrive.BorderStyle = "FixedSingle"
     $panel.Controls.Add($pnlOneDrive)
     
     # Remove OneDrive folder field
@@ -471,7 +475,7 @@ function Create-StorageSelectionPage {
     $script:cmbRegion.Size = New-Object System.Drawing.Size(200, 30)
     $script:cmbRegion.DropDownStyle = "DropDownList"
     $script:cmbRegion.Name = "cmbRegion"
-    $pnlS3.Controls.Add($script:cmbRegion)
+    $pnlS3.Controls.Add($script:cmbRegion)  
     
     $script:lblS3Status = New-Object System.Windows.Forms.Label
     $script:lblS3Status.Name = "lblS3Status"
@@ -520,6 +524,31 @@ function Create-StorageSelectionPage {
         $parentPanel.Controls["pnlS3"].Visible = $this.Checked
         if ($this.Checked) { $parentPanel.Controls["pnlS3"].BringToFront() }
     })
+
+    if($user_config.storage.type -eq "S3") {
+        $radioS3.Checked = $true
+        $pnlS3.Visible = $true
+        $pnlLocal.Visible = $false
+        $pnlOneDrive.Visible = $false
+        $script:txtAccessKey.Text = $user_config.storage.accessKey
+        $script:txtSecretKey.Text = $user_config.storage.secretAccessKey
+        $script:txtBucket.Text = $user_config.storage.bucketName
+        $script:cmbRegion.SelectedItem = $user_config.storage.region
+    } elseif($user_config.storage.type -eq "OneDrive") {
+        $radioOneDrive.Checked = $true
+        $pnlOneDrive.Visible = $true
+        $pnlLocal.Visible = $false
+        $pnlS3.Visible = $false
+        $script:txtAppId.Text = $user_config.storage.appId
+        $script:txtClientSecret.Text = $user_config.storage.clientSecret
+        $script:txtTenantName.Text = $user_config.storage.tenantName
+    } else {
+        # Default to Local Storage
+        $radioLocal.Checked = $true
+        $pnlLocal.Visible = $true
+        $pnlOneDrive.Visible = $false
+        $pnlS3.Visible = $false
+    }   
     
     return $panel
 }
@@ -854,23 +883,13 @@ function Validate-CurrentPage {
             $radioS3 = $currentPanel.Controls["radioS3"]
             
             if ($radioLocal.Checked) {
-                # TODO RDB
-                # $localPath = $currentPanel.Controls["pnlLocal"].Controls["txtLocalPath"].Text.Trim()
-                # if ([string]::IsNullOrWhiteSpace($localPath)) {
-                #     [System.Windows.Forms.MessageBox]::Show("Local path is required.", "Validation Error")
-                #     return $false
-                # }
                 $global:Config.Storage.Type = "Local"
-                # $global:Config.Storage.Path = $localPath
             }
             elseif ($radioOneDrive.Checked) {
-                $oneDriveFolder = $currentPanel.Controls["pnlOneDrive"].Controls["txtOneDriveFolder"].Text.Trim()
-                if ([string]::IsNullOrWhiteSpace($oneDriveFolder)) {
-                    [System.Windows.Forms.MessageBox]::Show("OneDrive folder is required.", "Validation Error")
-                    return $false
-                }
                 $global:Config.Storage.Type = "OneDrive"
-                $global:Config.Storage.Folder = $oneDriveFolder
+                $global:Config.Storage.AppId = $currentPanel.Controls["pnlOneDrive"].Controls["txtAppId"].Text.Trim()
+                $global:Config.Storage.ClientSecret = $currentPanel.Controls["pnlOneDrive"].Controls["txtClientSecret"].Text.Trim()
+                $global:Config.Storage.TenantName = $currentPanel.Controls["pnlOneDrive"].Controls["txtTenantName"].Text.Trim()
             }
             elseif ($radioS3.Checked) {
                 $pnlS3 = $currentPanel.Controls["pnlS3"]
@@ -898,7 +917,7 @@ function Validate-CurrentPage {
                 
                 $global:Config.Storage.Type = "S3"
                 $global:Config.Storage.AccessKey = $accessKey
-                $global:Config.Storage.SecretKey = $secretKey
+                $global:Config.Storage.SecretAccessKey = $secretKey
                 $global:Config.Storage.Bucket = $bucket
                 $global:Config.Storage.Region = $region
             }
@@ -974,18 +993,128 @@ $btnPrevious.Add_Click({
     Show-CurrentPage
 })
 
+
 $btnFinish.Add_Click({
     if (Validate-CurrentPage) {
         # Save configuration to file
         $configJson = $global:Config | ConvertTo-Json -Depth 3
-        $configPath = Join-Path $env:USERPROFILE "ZoomDownloaderConfig.json"
-        $configJson | Out-File -FilePath $configPath -Encoding utf8
+
+        $zoomConfig = @{
+            accountId    = $global:Config.Zoom.AccountId
+            clientId     = $global:Config.Zoom.ApiKey
+            clientSecret = $global:Config.Zoom.ApiSecret
+        }
+
+        $type = $global:Config.Storage.Type
+        if( $type -eq 'Local' ) {
+            $storageConfig = @{
+                type = $global:Config.Storage.Type
+            }             
+        } elseif( $type -eq 'OneDrive' ) {
+            $storageConfig = @{
+                type = $global:Config.Storage.Type
+
+                appId = $global:Config.Storage.AppId
+                clientSecret = $global:Config.Storage.ClientSecret
+                tenantName = $global:Config.Storage.TenantName
+            }             
+        } else {
+            $storageConfig = @{
+                type = $global:Config.Storage.Type
+                accessKey = $global:Config.Storage.AccessKey
+                secretAccessKey = $global:Config.Storage.SecretAccessKey
+                bucketName = $global:Config.Storage.Bucket
+                region = $global:Config.Storage.Region
+            }               
+        }
+
+        $config = @{
+            zoom     = $zoomConfig
+            storage  = $storageConfig
+            # office365 = $office365Config
+            # schedule = $schedule
+            # accounts = $AccountsList.text
+            #sqlserver = $sqlserver
+        }
+
+        $configuration.CreateLocalAppdataFolder()
+        $jsonString = $config | ConvertTo-Json
+        $configuration.SaveUserConfiguration($jsonString)
+
+        # if ($database -eq $null) {
+        #     Write-Host "The database is null."
+        #     $databasePath = $configuration.GetSQLiteDatabasePath()
+        #     $database = [SQLiteDatabase]::new($databasePath)
+        #     #$database = [SQLServerDatabase]::new($config, $true)  
+        # } 
+        # $database.Connect()
+        # $database.InsertIntoAccountsToDownloadTable($AccountsList.Text)
+        # $database.Disconnect()
+
         
         [System.Windows.Forms.MessageBox]::Show("Configuration saved to: $configPath", "Setup Complete")
         $form.DialogResult = "OK"
         $form.Close()
     }
 })
+
+# function onSubmitButtonClick { 
+
+#   $zoomConfig = @{
+#     accountId    = $script..text
+#     clientId     = $ZoomClientID.text
+#     clientSecret = $ZoomClientSecret.text
+#   }
+
+#   $office365Config = @{
+#       appId        = $Office365AppID.text
+#       tenantName   = $Office365TenantName.text
+#       clientSecret = $Office365ClientSecret.text
+#   }
+
+#   $schedule = @{
+#     schedule = $ScheduleComboBox.SelectedItem.ToString() 
+#     custom = $ScheduleText.text
+#     dateRange = $DateRangeComboBox.SelectedItem.ToString()
+#     customFromDate = $DateRangeText.text
+#   }
+
+#   $sqlserver = @{
+#     server = $sqlServerHost.text
+#     port = $sqlServerPort.text
+#     database = $sqlServerDatabase.text
+#     schema = $sqlServerSchema.text
+#     userid = $sqlServerUserID.text
+#     password = $sqlServerPassword.text
+#   }
+
+#   # Create the main configuration object
+#   $config = @{
+#     zoom     = $zoomConfig
+#     office365 = $office365Config
+#     schedule = $schedule
+#     accounts = $AccountsList.text
+#     #sqlserver = $sqlserver
+#   }
+
+#   $configuration.CreateLocalAppdataFolder()
+#   $jsonString = $config | ConvertTo-Json
+#   $configuration.SaveUserConfiguration($jsonString)
+
+#   if ($database -eq $null) {
+#     Write-Host "The database is null."
+#     $databasePath = $configuration.GetSQLiteDatabasePath()
+#     $database = [SQLiteDatabase]::new($databasePath)
+#     #$database = [SQLServerDatabase]::new($config, $true)  
+#   } 
+#   $database.Connect()
+#   $database.InsertIntoAccountsToDownloadTable($AccountsList.Text)
+#   $database.Disconnect()
+
+#   scheduleOn
+
+#   [System.Windows.Forms.MessageBox]::Show("ZoomDownloader scheduled.", "Message Box", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+# }
 
 $btnCancel.Add_Click({
     $result = [System.Windows.Forms.MessageBox]::Show("Are you sure you want to cancel the setup?", "Cancel Setup", "YesNo", "Question")
@@ -995,7 +1124,6 @@ $btnCancel.Add_Click({
     }
 })
 
-# Placeholder function for testing Zoom connection
 function Test-ZoomConnection {
     param(
         [string]$ApiKey,
@@ -1010,9 +1138,6 @@ function Test-ZoomConnection {
     }
   
     try {
-        # Simulate API call delay
-        Start-Sleep -Milliseconds 1500
-        
         # Basic validation
         if ([string]::IsNullOrWhiteSpace($ApiKey) -or 
             [string]::IsNullOrWhiteSpace($ApiSecret) -or 
