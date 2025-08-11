@@ -540,25 +540,26 @@ function Create-DatabasePage {
     $lblDbType = New-Object System.Windows.Forms.Label
     $lblDbType.Text = "Database Type:"
     $lblDbType.Location = New-Object System.Drawing.Point(30, 60)
-    $lblDbType.Size = New-Object System.Drawing.Size(100, 20)
+    $lblDbType.Size = New-Object System.Drawing.Size(90, 20)
     $panel.Controls.Add($lblDbType)
     
-    $cmbDatabaseType = New-Object System.Windows.Forms.ComboBox
-    $cmbDatabaseType.Items.AddRange(@("SQL Server"))
-    $cmbDatabaseType.Location = New-Object System.Drawing.Point(140, 60)
-    $cmbDatabaseType.Size = New-Object System.Drawing.Size(150, 20)
-    $cmbDatabaseType.DropDownStyle = "DropDownList"
-    $cmbDatabaseType.Name = "cmbDatabaseType"
+    # $cmbDatabaseType = New-Object System.Windows.Forms.ComboBox
+    # $cmbDatabaseType.Items.AddRange(@("SQL Server"))
+    # $cmbDatabaseType.Location = New-Object System.Drawing.Point(140, 60)
+    # $cmbDatabaseType.Size = New-Object System.Drawing.Size(150, 20)
+    # $cmbDatabaseType.DropDownStyle = "DropDownList"
+    # $cmbDatabaseType.Name = "cmbDatabaseType"
+
 
     $lblDbTypeValue = New-Object System.Windows.Forms.Label
     $lblDbTypeValue.Text = "SQL Server"
-    $lblDbTypeValue.Location = New-Object System.Drawing.Point(140, 60)
+    $lblDbTypeValue.Location = New-Object System.Drawing.Point(130, 60)
     $lblDbTypeValue.Size = New-Object System.Drawing.Size(150, 20)
     $lblDbTypeValue.Font = New-Object System.Drawing.Font("Microsoft Sans Serif", 9, [System.Drawing.FontStyle]::Regular)
     $lblDbTypeValue.Name = "lblDbTypeValue"
     $panel.Controls.Add($lblDbTypeValue)
     
-    $panel.Controls.Add($cmbDatabaseType)
+    #$panel.Controls.Add($cmbDatabaseType)
     
     # Server
     $lblServer = New-Object System.Windows.Forms.Label
@@ -569,33 +570,60 @@ function Create-DatabasePage {
     $panel.Controls.Add($lblServer)
     
     $script:txtServer = New-Object System.Windows.Forms.TextBox
-    $script:txtServer.Location = New-Object System.Drawing.Point(140, 100)
+    $script:txtServer.Location = New-Object System.Drawing.Point(130, 100)
     $script:txtServer.Size = New-Object System.Drawing.Size(200, 20)
     $script:txtServer.Name = "txtServer"
     $panel.Controls.Add($script:txtServer)
     
+
+    # Port
+    $lblPort = New-Object System.Windows.Forms.Label
+    $lblPort.Text = "Port:"
+    $lblPort.Location = New-Object System.Drawing.Point(30, 140)
+    $lblPort.Size = New-Object System.Drawing.Size(100, 20)
+    $panel.Controls.Add($lblPort)
+
+    $script:txtPort = New-Object System.Windows.Forms.TextBox
+    $script:txtPort.Location = New-Object System.Drawing.Point(130, 140)
+    $script:txtPort.Size = New-Object System.Drawing.Size(200, 20)
+    $script:txtPort.Name = "txtPort"
+    $panel.Controls.Add($script:txtPort)
+
     # Database Name
     $lblDatabase = New-Object System.Windows.Forms.Label
     $lblDatabase.Text = "Database:"
-    $lblDatabase.Location = New-Object System.Drawing.Point(30, 140)
+    $lblDatabase.Location = New-Object System.Drawing.Point(30, 180)
     $lblDatabase.Size = New-Object System.Drawing.Size(100, 20)
     $panel.Controls.Add($lblDatabase)
     
     $script:txtDatabase = New-Object System.Windows.Forms.TextBox
-    $script:txtDatabase.Location = New-Object System.Drawing.Point(140, 140)
+    $script:txtDatabase.Location = New-Object System.Drawing.Point(130, 180)
     $script:txtDatabase.Size = New-Object System.Drawing.Size(200, 20)
     $script:txtDatabase.Name = "txtDatabase"
     $panel.Controls.Add($script:txtDatabase)
+
+    # Schema Name
+    $lblSchema = New-Object System.Windows.Forms.Label
+    $lblSchema.Text = "Schema:"
+    $lblSchema.Location = New-Object System.Drawing.Point(30, 220)
+    $lblSchema.Size = New-Object System.Drawing.Size(100, 20)
+    $panel.Controls.Add($lblSchema)
+    
+    $script:txtSchema = New-Object System.Windows.Forms.TextBox
+    $script:txtSchema.Location = New-Object System.Drawing.Point(130, 220)
+    $script:txtSchema.Size = New-Object System.Drawing.Size(200, 20)
+    $script:txtSchema.Name = "txtSchema"
+    $panel.Controls.Add($script:txtSchema)
     
     # Username
     $lblUsername = New-Object System.Windows.Forms.Label
     $lblUsername.Text = "Username:"
-    $lblUsername.Location = New-Object System.Drawing.Point(30, 180)
+    $lblUsername.Location = New-Object System.Drawing.Point(30, 269)
     $lblUsername.Size = New-Object System.Drawing.Size(100, 20)
     $panel.Controls.Add($lblUsername)
     
     $script:txtUsername = New-Object System.Windows.Forms.TextBox
-    $script:txtUsername.Location = New-Object System.Drawing.Point(140, 180)
+    $script:txtUsername.Location = New-Object System.Drawing.Point(130, 260)
     $script:txtUsername.Size = New-Object System.Drawing.Size(200, 20)
     $script:txtUsername.Name = "txtUsername"
     $panel.Controls.Add($script:txtUsername)
@@ -603,12 +631,12 @@ function Create-DatabasePage {
     # Password
     $lblPassword = New-Object System.Windows.Forms.Label
     $lblPassword.Text = "Password:"
-    $lblPassword.Location = New-Object System.Drawing.Point(30, 220)
+    $lblPassword.Location = New-Object System.Drawing.Point(30, 300)
     $lblPassword.Size = New-Object System.Drawing.Size(100, 20)
     $panel.Controls.Add($lblPassword)
     
     $script:txtPassword = New-Object System.Windows.Forms.TextBox
-    $script:txtPassword.Location = New-Object System.Drawing.Point(140, 220)
+    $script:txtPassword.Location = New-Object System.Drawing.Point(130, 300)
     $script:txtPassword.Size = New-Object System.Drawing.Size(200, 20)
     $script:txtPassword.UseSystemPasswordChar = $true
     $script:txtPassword.Name = "txtPassword"
@@ -616,7 +644,7 @@ function Create-DatabasePage {
 
     $script:lblDbStatus = New-Object System.Windows.Forms.Label
     $script:lblDbStatus.Name = "lblDbStatus"
-    $script:lblDbStatus.Location = New-Object System.Drawing.Point(30, 240)
+    $script:lblDbStatus.Location = New-Object System.Drawing.Point(30, 330)
     $script:lblDbStatus.Size = New-Object System.Drawing.Size(600, 30)
     $script:lblDbStatus.Text = ""
     $panel.Controls.Add($script:lblDbStatus)
@@ -624,7 +652,7 @@ function Create-DatabasePage {
     # Test Connection Button
     $script:btnTestDb = New-Object System.Windows.Forms.Button
     $script:btnTestDb.Text = "Test Connection"
-    $script:btnTestDb.Location = New-Object System.Drawing.Point(30, 280)
+    $script:btnTestDb.Location = New-Object System.Drawing.Point(30, 360)
     $script:btnTestDb.Size = New-Object System.Drawing.Size(120, 30)
     $script:btnTestDb.Name = "btnTestDb"
     $script:btnTestDb.Enabled = $false
@@ -635,12 +663,12 @@ function Create-DatabasePage {
         $form.Update()
 
         $sqlserver = @{
-            server = $sqlServerHost.text
-            port = $sqlServerPort.text
-            database = $sqlServerDatabase.text
-            schema = $sqlServerSchema.text
-            userid = $sqlServerUserID.text
-            password = $sqlServerPassword.text
+            server = $script:txtServer.text
+            port = $script:txtPort.text
+            database = $script:txtDatabase.text
+            schema = $script:txtSchema.text
+            userid = $script:txtUsername.text
+            password = $script:txtPassword.text
         }
 
         $config = @{
