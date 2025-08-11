@@ -232,7 +232,6 @@ function Create-ZoomCredentialsPage {
 
 # Function to create Storage Selection page
 function Create-StorageSelectionPage {
-    Write-Host "dkfhdkfhdkfhdkfhdkjfh"
     $panel = New-Object System.Windows.Forms.Panel
     $panel.Dock = "Fill"
     
@@ -251,17 +250,34 @@ function Create-StorageSelectionPage {
     $radioLocal.Checked = $true
     $radioLocal.Name = "radioLocal"
     $panel.Controls.Add($radioLocal)
-    
+
+    # Download path label and note
+    $lblLocalPath = New-Object System.Windows.Forms.Label
+    $lblLocalPath.Text = "Download Path: %AppData%\\Local\\ZoomDownloader"
+    $lblLocalPath.Location = New-Object System.Drawing.Point(50, 85)
+    $lblLocalPath.Size = New-Object System.Drawing.Size(500, 20)  # Increase width to prevent wrapping
+    $lblLocalPath.Font = New-Object System.Drawing.Font("Microsoft Sans Serif", 10, [System.Drawing.FontStyle]::Bold)
+    $lblLocalPath.AutoSize = $false
+    $panel.Controls.Add($lblLocalPath)
+
+    $lblLocalNote = New-Object System.Windows.Forms.Label
+    $lblLocalNote.Text = "(This location is hardcoded and cannot be changed)"
+    $lblLocalNote.Location = New-Object System.Drawing.Point(50, 105)
+    $lblLocalNote.Size = New-Object System.Drawing.Size(350, 18)
+    $lblLocalNote.ForeColor = [System.Drawing.Color]::Gray
+    $panel.Controls.Add($lblLocalNote)
+
+    # Move other radio buttons down
     $radioOneDrive = New-Object System.Windows.Forms.RadioButton
     $radioOneDrive.Text = "Microsoft OneDrive"
-    $radioOneDrive.Location = New-Object System.Drawing.Point(50, 90)
+    $radioOneDrive.Location = New-Object System.Drawing.Point(50, 130)
     $radioOneDrive.Size = New-Object System.Drawing.Size(200, 20)
     $radioOneDrive.Name = "radioOneDrive"
     $panel.Controls.Add($radioOneDrive)
-    
+
     $radioS3 = New-Object System.Windows.Forms.RadioButton
     $radioS3.Text = "Amazon S3"
-    $radioS3.Location = New-Object System.Drawing.Point(50, 120)
+    $radioS3.Location = New-Object System.Drawing.Point(50, 160)
     $radioS3.Size = New-Object System.Drawing.Size(200, 20)
     $radioS3.Name = "radioS3"
     $panel.Controls.Add($radioS3)
@@ -276,45 +292,83 @@ function Create-StorageSelectionPage {
     $pnlLocal.Visible = $true  # Always visible
     $panel.Controls.Add($pnlLocal)
     
-    # Remove download path textbox and browse button
-    # Only show label and note
+    # Move lblLocalPath and lblLocalNote underneath the Local Storage Only radio button
     $lblLocalPath = New-Object System.Windows.Forms.Label
     $lblLocalPath.Text = "Download Path: %AppData%\\Local\\ZoomDownloader"
-    $lblLocalPath.Location = New-Object System.Drawing.Point(0, 10)
-    $lblLocalPath.Size = New-Object System.Drawing.Size(350, 20)
-    $pnlLocal.Controls.Add($lblLocalPath)
+    $lblLocalPath.Location = New-Object System.Drawing.Point(50, 85)
+    $lblLocalPath.Size = New-Object System.Drawing.Size(500, 20)  # Increase width to prevent wrapping
+    $lblLocalPath.Font = New-Object System.Drawing.Font("Microsoft Sans Serif", 10, [System.Drawing.FontStyle]::Bold)
+    $lblLocalPath.AutoSize = $false
+    $panel.Controls.Add($lblLocalPath)
 
     $lblLocalNote = New-Object System.Windows.Forms.Label
     $lblLocalNote.Text = "(This location is hardcoded and cannot be changed)"
-    $lblLocalNote.Location = New-Object System.Drawing.Point(0, 35)
+    $lblLocalNote.Location = New-Object System.Drawing.Point(50, 105)
     $lblLocalNote.Size = New-Object System.Drawing.Size(350, 18)
     $lblLocalNote.ForeColor = [System.Drawing.Color]::Gray
-    $pnlLocal.Controls.Add($lblLocalNote)
+    $panel.Controls.Add($lblLocalNote)
+
+    # Remove from pnlLocal
+    $pnlLocal.Visible = $true  # Ensure always visible
     
     # OneDrive Panel
     $pnlOneDrive = New-Object System.Windows.Forms.Panel
-    $pnlOneDrive.Location = New-Object System.Drawing.Point(70, 150)
+    $pnlOneDrive.Location = New-Object System.Drawing.Point(70, 190)
     $pnlOneDrive.Size = New-Object System.Drawing.Size(450, 100)
     $pnlOneDrive.Visible = $false
     $pnlOneDrive.Name = "pnlOneDrive"
     $panel.Controls.Add($pnlOneDrive)
     
-    $lblOneDriveFolder = New-Object System.Windows.Forms.Label
-    $lblOneDriveFolder.Text = "OneDrive Folder:"
-    $lblOneDriveFolder.Location = New-Object System.Drawing.Point(0, 10)
-    $lblOneDriveFolder.Size = New-Object System.Drawing.Size(100, 20)
-    $pnlOneDrive.Controls.Add($lblOneDriveFolder)
+    # Remove OneDrive folder field
+    # Add OneDrive credential fields
+    $lblAppId = New-Object System.Windows.Forms.Label
+    $lblAppId.Text = "App ID:"
+    $lblAppId.Location = New-Object System.Drawing.Point(0, 10)
+    $lblAppId.Size = New-Object System.Drawing.Size(100, 20)
+    $pnlOneDrive.Controls.Add($lblAppId)
+
+    $txtAppId = New-Object System.Windows.Forms.TextBox
+    $txtAppId.Location = New-Object System.Drawing.Point(110, 10)
+    $txtAppId.Size = New-Object System.Drawing.Size(250, 20)
+    $txtAppId.Name = "txtAppId"
+    $pnlOneDrive.Controls.Add($txtAppId)
+
+    $lblClientSecret = New-Object System.Windows.Forms.Label
+    $lblClientSecret.Text = "Client Secret:"
+    $lblClientSecret.Location = New-Object System.Drawing.Point(0, 40)
+    $lblClientSecret.Size = New-Object System.Drawing.Size(100, 20)
+    $pnlOneDrive.Controls.Add($lblClientSecret)
+
+    $txtClientSecret = New-Object System.Windows.Forms.TextBox
+    $txtClientSecret.Location = New-Object System.Drawing.Point(110, 40)
+    $txtClientSecret.Size = New-Object System.Drawing.Size(250, 20)
+    $txtClientSecret.UseSystemPasswordChar = $true
+    $txtClientSecret.Name = "txtClientSecret"
+    $pnlOneDrive.Controls.Add($txtClientSecret)
+
+    $lblTenantName = New-Object System.Windows.Forms.Label
+    $lblTenantName.Text = "Tenant Name:"
+    $lblTenantName.Location = New-Object System.Drawing.Point(0, 70)
+    $lblTenantName.Size = New-Object System.Drawing.Size(100, 20)
+    $pnlOneDrive.Controls.Add($lblTenantName)
+
+    $txtTenantName = New-Object System.Windows.Forms.TextBox
+    $txtTenantName.Location = New-Object System.Drawing.Point(110, 70)
+    $txtTenantName.Size = New-Object System.Drawing.Size(250, 20)
+    $txtTenantName.Name = "txtTenantName"
+    $pnlOneDrive.Controls.Add($txtTenantName)
     
-    $txtOneDriveFolder = New-Object System.Windows.Forms.TextBox
-    $txtOneDriveFolder.Location = New-Object System.Drawing.Point(110, 10)
-    $txtOneDriveFolder.Size = New-Object System.Drawing.Size(250, 20)
-    $txtOneDriveFolder.Text = "ZoomRecordings"
-    $txtOneDriveFolder.Name = "txtOneDriveFolder"
-    $pnlOneDrive.Controls.Add($txtOneDriveFolder)
-    
+    # Add Test Connection button to OneDrive panel
+    $btnTestOneDrive = New-Object System.Windows.Forms.Button
+    $btnTestOneDrive.Text = "Test Connection"
+    $btnTestOneDrive.Location = New-Object System.Drawing.Point(370, 10)
+    $btnTestOneDrive.Size = New-Object System.Drawing.Size(120, 30)
+    $btnTestOneDrive.Name = "btnTestOneDrive"
+    $pnlOneDrive.Controls.Add($btnTestOneDrive)
+
     # S3 Panel
     $pnlS3 = New-Object System.Windows.Forms.Panel
-    $pnlS3.Location = New-Object System.Drawing.Point(70, 150)
+    $pnlS3.Location = New-Object System.Drawing.Point(70, 190)
     $pnlS3.Size = New-Object System.Drawing.Size(450, 150)
     $pnlS3.Visible = $false
     $pnlS3.Name = "pnlS3"
@@ -371,6 +425,14 @@ function Create-StorageSelectionPage {
     $cmbRegion.Name = "cmbRegion"
     $pnlS3.Controls.Add($cmbRegion)
     
+    # Add Test Connection button to S3 panel
+    $btnTestS3 = New-Object System.Windows.Forms.Button
+    $btnTestS3.Text = "Test Connection"
+    $btnTestS3.Location = New-Object System.Drawing.Point(370, 10)
+    $btnTestS3.Size = New-Object System.Drawing.Size(120, 30)
+    $btnTestS3.Name = "btnTestS3"
+    $pnlS3.Controls.Add($btnTestS3)
+    
     # Radio button events to show/hide panels
     $radioLocal.Add_CheckedChanged({
         $parentPanel = $this.Parent
@@ -386,17 +448,6 @@ function Create-StorageSelectionPage {
         $parentPanel = $this.Parent
         $parentPanel.Controls["pnlS3"].Visible = $this.Checked
         if ($this.Checked) { $parentPanel.Controls["pnlS3"].BringToFront() }
-    })
-    
-    # Browse button event
-    $btnBrowse.Add_Click({
-        $folderBrowser = New-Object System.Windows.Forms.FolderBrowserDialog
-        $folderBrowser.Description = "Select download folder"
-        $folderBrowser.SelectedPath = $txtLocalPath.Text
-        
-        if ($folderBrowser.ShowDialog() -eq "OK") {
-            $txtLocalPath.Text = $folderBrowser.SelectedPath
-        }
     })
     
     return $panel
