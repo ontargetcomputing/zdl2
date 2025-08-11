@@ -16,6 +16,24 @@ Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
 
+
+# Global configuration storage
+if (-not $global:Config) {
+    $global:Config = @{}
+}
+if (-not $global:Config.Zoom) {
+    $global:Config.Zoom = @{}
+}
+if (-not $global:Config.Database) {
+    $global:Config.Database = @{}
+}
+if (-not $global:Config.Storage) {
+    $global:Config.Storage = @{}
+}
+if (-not $global:Config.Schedule) {
+    $global:Config.Schedule = @{}
+}
+
 # Current page tracking
 $script:currentPage = 1
 
@@ -790,12 +808,8 @@ function Create-SchedulePage {
     $panel.Controls.Add($lblSchedule)
 
     $script:cmbSchedule = New-Object System.Windows.Forms.ComboBox
-    $script:cmbSchedule.Items.AddRange(@(
-        "Hourly",
-        "Daily at midnight",
-        "Every 5 minutes",
-        "Custom..."
-    ))
+    $script:cmbSchedule.Items.AddRange(@('Every Day at Midnight','Every Hour','Every 5 Minutes','Immediate Single Run', 'Custom...'))
+
     $script:cmbSchedule.Location = New-Object System.Drawing.Point(140, 100)
     $script:cmbSchedule.Size = New-Object System.Drawing.Size(200, 25)
     $script:cmbSchedule.DropDownStyle = "DropDownList"
@@ -809,14 +823,14 @@ function Create-SchedulePage {
     $script:lblCustom.Visible = $false
     $panel.Controls.Add($script:lblCustom)
 
-    $txtCustom = New-Object System.Windows.Forms.TextBox
-    $txtCustom.Location = New-Object System.Drawing.Point(30, 170)
-    $txtCustom.Size = New-Object System.Drawing.Size(400, 60)
-    $txtCustom.Multiline = $true
-    $txtCustom.ScrollBars = "Vertical"
-    $txtCustom.Name = "txtCustom"
-    $txtCustom.Visible = $false
-    $panel.Controls.Add($txtCustom)
+    $script:txtCustom = New-Object System.Windows.Forms.TextBox
+    $script:txtCustom.Location = New-Object System.Drawing.Point(30, 170)
+    $script:txtCustom.Size = New-Object System.Drawing.Size(400, 60)
+    $script:txtCustom.Multiline = $true
+    $script:txtCustom.ScrollBars = "Vertical"
+    $script:txtCustom.Name = "txtCustom"
+    $script:txtCustom.Visible = $false
+    $panel.Controls.Add($script:txtCustom)
 
     $script:cmbSchedule.Add_SelectedIndexChanged({
         if ($this.SelectedItem -eq "Custom...") {
@@ -971,6 +985,17 @@ function Validate-CurrentPage {
             $global:Config.Database.Username = $username
             $global:Config.Database.Password = $password
         }
+        5 { # Schedule
+            $currentPanel = $pageControls[4]
+            $schedule = $currentPanel.Controls["cmbSchedule"].SelectedItem.Trim()
+
+            if ([string]::IsNullOrWhiteSpace($schedule)) {
+                [System.Windows.Forms.MessageBox]::Show("Schedule is required.", "Validation Error")
+                return $false
+            }
+
+            $global:Config.Schedule.Schedule = $schedule
+        }
     }
     return $true
 }
@@ -1065,11 +1090,18 @@ $btnFinish.Add_Click({
             password = $global:Config.Database.Password
         }
 
+        $schedule = @{
+            schedule = $global:Config.Schedule.schedule
+            # custom = $global:Config.Schedule.custom
+            # dateRange = $global:Config.Schedule.dateRange
+            # customFromDate = $global:Config.Schedule.customFromDate
+        }
+
         $config = @{
             zoom     = $zoomConfig
             storage  = $storageConfig
             database = $databaseConfig
-            # schedule = $schedule
+            schedule = $schedule
             # accounts = $AccountsList.text
             #sqlserver = $sqlserver
         }
