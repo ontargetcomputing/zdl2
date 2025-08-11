@@ -1,3 +1,4 @@
+using module ../Modules/FileStorage/Classes/OneDriveFileStorage.psm1
 using module ../Modules/Zoom/Classes/ZoomService.psm1
 using module ../Modules/Configuration/Classes/ZDAConfiguration.psm1
 
@@ -326,11 +327,11 @@ function Create-StorageSelectionPage {
     $lblAppId.Size = New-Object System.Drawing.Size(100, 20)
     $pnlOneDrive.Controls.Add($lblAppId)
 
-    $txtAppId = New-Object System.Windows.Forms.TextBox
-    $txtAppId.Location = New-Object System.Drawing.Point(110, 10)
-    $txtAppId.Size = New-Object System.Drawing.Size(250, 20)
-    $txtAppId.Name = "txtAppId"
-    $pnlOneDrive.Controls.Add($txtAppId)
+    $script:txtAppId = New-Object System.Windows.Forms.TextBox
+    $script:txtAppId.Location = New-Object System.Drawing.Point(110, 10)
+    $script:txtAppId.Size = New-Object System.Drawing.Size(250, 20)
+    $script:txtAppId.Name = "txtAppId"
+    $pnlOneDrive.Controls.Add($script:txtAppId)
 
     $lblClientSecret = New-Object System.Windows.Forms.Label
     $lblClientSecret.Text = "Client Secret:"
@@ -338,34 +339,67 @@ function Create-StorageSelectionPage {
     $lblClientSecret.Size = New-Object System.Drawing.Size(100, 20)
     $pnlOneDrive.Controls.Add($lblClientSecret)
 
-    $txtClientSecret = New-Object System.Windows.Forms.TextBox
-    $txtClientSecret.Location = New-Object System.Drawing.Point(110, 40)
-    $txtClientSecret.Size = New-Object System.Drawing.Size(250, 20)
-    $txtClientSecret.UseSystemPasswordChar = $true
-    $txtClientSecret.Name = "txtClientSecret"
-    $pnlOneDrive.Controls.Add($txtClientSecret)
+    $script:txtClientSecret = New-Object System.Windows.Forms.TextBox
+    $script:txtClientSecret.Location = New-Object System.Drawing.Point(110, 40)
+    $script:txtClientSecret.Size = New-Object System.Drawing.Size(250, 20)
+    $script:txtClientSecret.UseSystemPasswordChar = $true
+    $script:txtClientSecret.Name = "txtClientSecret"
+    $pnlOneDrive.Controls.Add($script:txtClientSecret)
 
-    $lblTenantName = New-Object System.Windows.Forms.Label
-    $lblTenantName.Text = "Tenant Name:"
-    $lblTenantName.Location = New-Object System.Drawing.Point(0, 70)
-    $lblTenantName.Size = New-Object System.Drawing.Size(100, 20)
+    $script:lblTenantName = New-Object System.Windows.Forms.Label
+    $script:lblTenantName.Text = "Tenant Name:"
+    $script:lblTenantName.Location = New-Object System.Drawing.Point(0, 70)
+    $script:lblTenantName.Size = New-Object System.Drawing.Size(100, 20)
     $pnlOneDrive.Controls.Add($lblTenantName)
 
-    $txtTenantName = New-Object System.Windows.Forms.TextBox
-    $txtTenantName.Location = New-Object System.Drawing.Point(110, 70)
-    $txtTenantName.Size = New-Object System.Drawing.Size(250, 20)
-    $txtTenantName.Name = "txtTenantName"
-    $pnlOneDrive.Controls.Add($txtTenantName)
+    $script:txtTenantName = New-Object System.Windows.Forms.TextBox
+    $script:txtTenantName.Location = New-Object System.Drawing.Point(110, 70)
+    $script:txtTenantName.Size = New-Object System.Drawing.Size(250, 20)
+    $script:txtTenantName.Name = "txtTenantName"
+    $pnlOneDrive.Controls.Add($script:txtTenantName)
     
     # Add Test Connection button to OneDrive panel
-    $btnTestOneDrive = New-Object System.Windows.Forms.Button
-    $btnTestOneDrive.Text = "Test Connection"
-    $btnTestOneDrive.Location = New-Object System.Drawing.Point(370, 10)
-    $btnTestOneDrive.Size = New-Object System.Drawing.Size(120, 30)
-    $btnTestOneDrive.Name = "btnTestOneDrive"
-    $btnTestOneDrive.Enabled = $false
-    $btnTestOneDrive.Add_Click({ Write-Host "[DEBUG] OneDrive Test Connection button pressed" })
-    $pnlOneDrive.Controls.Add($btnTestOneDrive)
+    $script:btnTestOneDrive = New-Object System.Windows.Forms.Button
+    $script:btnTestOneDrive.Text = "Test Connection"
+    $script:btnTestOneDrive.Location = New-Object System.Drawing.Point(370, 10)
+    $script:btnTestOneDrive.Size = New-Object System.Drawing.Size(120, 30)
+    $script:btnTestOneDrive.Name = "btnTestOneDrive"
+    $script:btnTestOneDrive.Enabled = $false
+
+    $script:btnTestOneDrive.Add_Click({
+        $AppId = $script:txtAppId.Text.Trim()
+        $ClientSecret = $script:txtClientSecret.Text.Trim()
+        $TenantName = $script:txtTenantName.Text.Trim()
+
+        $script:lblTestStatus.Text = "Testing connection..."
+        $script:lblTestStatus.ForeColor = [System.Drawing.Color]::Blue
+        $script:btnTestOneDrive.Enabled = $false
+        $form.Update()
+
+        try {
+            $oneDriveFileStorage = [OneDriveFileStorage]::new($AppId, $ClientSecret, $TenantName)
+            $oneDriveFileStorage.Authenticate()
+            Write-Host "FileStorage Authentications Worked"
+            [System.Windows.Forms.MessageBox]::Show("FileStorage Authentication Worked.", "Message Box", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+        }
+        catch {
+            $script:lblTestStatus.Text = "ERROR: Connection test failed, $($_.Exception.Message)"
+            $script:lblTestStatus.ForeColor = [System.Drawing.Color]::Red            
+        }
+        finally {
+            $script:btnTestOneDrive.Enabled = $true
+        }
+        if ($result.Success) {
+            $script:lblTestStatus.Text = "SUCCESS: Connection successful!"
+            $script:lblTestStatus.ForeColor = [System.Drawing.Color]::Green
+        } else {
+            $script:lblTestStatus.Text = "ERROR: $($result.ErrorMessage)"
+            $script:lblTestStatus.ForeColor = [System.Drawing.Color]::Red
+        }
+
+    })
+    
+    $pnlOneDrive.Controls.Add($script:btnTestOneDrive)
     # Enable Test Connection only if all OneDrive fields are filled
     $checkOneDriveFields = {
         if ($txtAppId.Text -and $txtClientSecret.Text -and $txtTenantName.Text) {
@@ -374,9 +408,9 @@ function Create-StorageSelectionPage {
             $btnTestOneDrive.Enabled = $false
         }
     }
-    $txtAppId.Add_TextChanged($checkOneDriveFields)
-    $txtClientSecret.Add_TextChanged($checkOneDriveFields)
-    $txtTenantName.Add_TextChanged($checkOneDriveFields)
+    $script:txtAppId.Add_TextChanged($checkOneDriveFields)
+    $script:txtClientSecret.Add_TextChanged($checkOneDriveFields)
+    $script:txtTenantName.Add_TextChanged($checkOneDriveFields)
 
     # S3 Panel
     $pnlS3 = New-Object System.Windows.Forms.Panel
