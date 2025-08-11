@@ -364,6 +364,7 @@ function Create-StorageSelectionPage {
     $btnTestOneDrive.Location = New-Object System.Drawing.Point(370, 10)
     $btnTestOneDrive.Size = New-Object System.Drawing.Size(120, 30)
     $btnTestOneDrive.Name = "btnTestOneDrive"
+    $btnTestOneDrive.Add_Click({ Write-Host "[DEBUG] OneDrive Test Connection button pressed" })
     $pnlOneDrive.Controls.Add($btnTestOneDrive)
 
     # S3 Panel
@@ -428,9 +429,10 @@ function Create-StorageSelectionPage {
     # Add Test Connection button to S3 panel
     $btnTestS3 = New-Object System.Windows.Forms.Button
     $btnTestS3.Text = "Test Connection"
-    $btnTestS3.Location = New-Object System.Drawing.Point(110, 280)
-    $btnTestS3.Size = New-Object System.Drawing.Size(120, 30)
+    $btnTestS3.Location = New-Object System.Drawing.Point(370, 10)
+    $btnTestS3.Size = New-Object System.Drawing.Size(120, 30)   
     $btnTestS3.Name = "btnTestS3"
+    $btnTestS3.Add_Click({ Write-Host "[DEBUG] S3 Test Connection button pressed" })
     $pnlS3.Controls.Add($btnTestS3)
     
     # Radio button events to show/hide panels
