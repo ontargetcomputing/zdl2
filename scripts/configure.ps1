@@ -1,6 +1,7 @@
 using module ../Modules/FileStorage/Classes/OneDriveFileStorage.psm1
 using module ../Modules/Zoom/Classes/ZoomService.psm1
 using module ../Modules/Configuration/Classes/ZDAConfiguration.psm1
+using module ../Modules/Database/Classes/SQLServerDatabase.psm1
 
 # Load Windows Forms assembly
 Add-Type -AssemblyName System.Windows.Forms
@@ -526,7 +527,7 @@ function Create-StorageSelectionPage {
 # Function to create Database Configuration page
 function Create-DatabasePage {
     $panel = New-Object System.Windows.Forms.Panel
-    $panel.Size = New-Object System.Drawing.Size(640, 300)
+    $panel.Size = New-Object System.Drawing.Size(640, 400)
     
     $lblTitle = New-Object System.Windows.Forms.Label
     $lblTitle.Text = "Database Configuration:"
@@ -616,14 +617,14 @@ function Create-DatabasePage {
     $script:lblDbStatus = New-Object System.Windows.Forms.Label
     $script:lblDbStatus.Name = "lblDbStatus"
     $script:lblDbStatus.Location = New-Object System.Drawing.Point(30, 240)
-    $script:lblDbStatus.Size = New-Object System.Drawing.Size(400, 30)
+    $script:lblDbStatus.Size = New-Object System.Drawing.Size(600, 30)
     $script:lblDbStatus.Text = ""
     $panel.Controls.Add($script:lblDbStatus)
 
     # Test Connection Button
     $script:btnTestDb = New-Object System.Windows.Forms.Button
     $script:btnTestDb.Text = "Test Connection"
-    $script:btnTestDb.Location = New-Object System.Drawing.Point(30, 270)
+    $script:btnTestDb.Location = New-Object System.Drawing.Point(30, 280)
     $script:btnTestDb.Size = New-Object System.Drawing.Size(120, 30)
     $script:btnTestDb.Name = "btnTestDb"
     $script:btnTestDb.Enabled = $false
@@ -632,14 +633,38 @@ function Create-DatabasePage {
         $script:lblDbStatus.Text = "Testing Database connection..."
         $script:lblDbStatus.ForeColor = [System.Drawing.Color]::Blue
         $form.Update()
-        Start-Sleep -Milliseconds 1200
-        $script:lblDbStatus.Text = "SUCCESS: Simulated DB connection. (Replace with real API call)"
-        $script:lblDbStatus.ForeColor = [System.Drawing.Color]::Green
-        $this.Enabled = $true
+
+        $sqlserver = @{
+            server = $sqlServerHost.text
+            port = $sqlServerPort.text
+            database = $sqlServerDatabase.text
+            schema = $sqlServerSchema.text
+            userid = $sqlServerUserID.text
+            password = $sqlServerPassword.text
+        }
+
+        $config = @{
+            sqlserver = $sqlserver
+        }
+
+        $database = [SQLServerDatabase]::new($config, $false)  
+        
+        try {
+            $database.Connect()
+            $database.Disconnect()
+            $script:lblDbStatus.Text = "SUCCESS: SQLSAerver Credentials Worked."
+            $script:lblDbStatus.ForeColor = [System.Drawing.Color]::Green
+        }
+        catch {
+             $script:lblDbStatus.Text = "FAILURE: SQLServer Credentials did not work: $_"
+            $script:lblDbStatus.ForeColor = [System.Drawing.Color]::Red
+        } 
+        finally {
+            $this.Enabled = $true
+        }   
     })
     $panel.Controls.Add($script:btnTestDb)
 
-    #RDB 
     # Enable Test Connection only if all DB fields are filled
     $checkDbFields = {
         if ($script:txtServer.Text -and $script:txtDatabase.Text -and $script:txtUsername.Text -and $script:txtPassword.Text) {
@@ -704,25 +729,25 @@ function Create-SchedulePage {
     $lblSchedule.Size = New-Object System.Drawing.Size(100, 20)
     $panel.Controls.Add($lblSchedule)
 
-    $cmbSchedule = New-Object System.Windows.Forms.ComboBox
-    $cmbSchedule.Items.AddRange(@(
+    $script:cmbSchedule = New-Object System.Windows.Forms.ComboBox
+    $script:cmbSchedule.Items.AddRange(@(
         "Hourly",
         "Daily at midnight",
         "Every 5 minutes",
         "Custom..."
     ))
-    $cmbSchedule.Location = New-Object System.Drawing.Point(140, 100)
-    $cmbSchedule.Size = New-Object System.Drawing.Size(200, 25)
-    $cmbSchedule.DropDownStyle = "DropDownList"
-    $cmbSchedule.Name = "cmbSchedule"
-    $panel.Controls.Add($cmbSchedule)
+    $script:cmbSchedule.Location = New-Object System.Drawing.Point(140, 100)
+    $script:cmbSchedule.Size = New-Object System.Drawing.Size(200, 25)
+    $script:cmbSchedule.DropDownStyle = "DropDownList"
+    $script:cmbSchedule.Name = "cmbSchedule"
+    $panel.Controls.Add($script:cmbSchedule)
 
-    $lblCustom = New-Object System.Windows.Forms.Label
-    $lblCustom.Text = "Custom PowerShell Schedule Expression:"
-    $lblCustom.Location = New-Object System.Drawing.Point(30, 140)
-    $lblCustom.Size = New-Object System.Drawing.Size(300, 20)
-    $lblCustom.Visible = $false
-    $panel.Controls.Add($lblCustom)
+    $script:lblCustom = New-Object System.Windows.Forms.Label
+    $script:lblCustom.Text = "Custom PowerShell Schedule Expression:"
+    $script:lblCustom.Location = New-Object System.Drawing.Point(30, 140)
+    $script:lblCustom.Size = New-Object System.Drawing.Size(300, 20)
+    $script:lblCustom.Visible = $false
+    $panel.Controls.Add($script:lblCustom)
 
     $txtCustom = New-Object System.Windows.Forms.TextBox
     $txtCustom.Location = New-Object System.Drawing.Point(30, 170)
@@ -733,13 +758,13 @@ function Create-SchedulePage {
     $txtCustom.Visible = $false
     $panel.Controls.Add($txtCustom)
 
-    $cmbSchedule.Add_SelectedIndexChanged({
-        if ($cmbSchedule.SelectedItem -eq "Custom...") {
-            $lblCustom.SetVisible($true)
-            $txtCustom.SetVisible($true)
+    $script:cmbSchedule.Add_SelectedIndexChanged({
+        if ($this.SelectedItem -eq "Custom...") {
+            $script:lblCustom.Visible = $true
+            $script:txtCustom.Visible = $true
         } else {
-            $lblCustom.SetVisible($false)
-            $txtCustom.SetVisible($false)
+            $script:lblCustom.Visible = $false
+            $script:txtCustom.Visible = $false
         }
     })
 
@@ -908,8 +933,10 @@ Click Finish to complete the setup.
 "@
     
     $currentPanel = $pageControls[4]
-    $currentPanel.Controls["txtSummary"].Text = $summaryText
-}
+
+    $txtSummary = $currentPanel.Controls | Where-Object { $_.Name -eq "txtSummary" }
+    if ($txtSummary) { $txtSummary.Text = $summaryText }    
+    }
 
 # Event handlers
 $btnNext.Add_Click({
