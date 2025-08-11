@@ -542,13 +542,7 @@ function Create-DatabasePage {
     $lblDbType.Location = New-Object System.Drawing.Point(30, 60)
     $lblDbType.Size = New-Object System.Drawing.Size(90, 20)
     $panel.Controls.Add($lblDbType)
-    
-    # $cmbDatabaseType = New-Object System.Windows.Forms.ComboBox
-    # $cmbDatabaseType.Items.AddRange(@("SQL Server"))
-    # $cmbDatabaseType.Location = New-Object System.Drawing.Point(140, 60)
-    # $cmbDatabaseType.Size = New-Object System.Drawing.Size(150, 20)
-    # $cmbDatabaseType.DropDownStyle = "DropDownList"
-    # $cmbDatabaseType.Name = "cmbDatabaseType"
+
 
 
     $lblDbTypeValue = New-Object System.Windows.Forms.Label
@@ -680,11 +674,12 @@ function Create-DatabasePage {
         try {
             $database.Connect()
             $database.Disconnect()
-            $script:lblDbStatus.Text = "SUCCESS: SQLSAerver Credentials Worked."
+            $script:lblDbStatus.Text = "SUCCESS: SQLServer Credentials Worked."
             $script:lblDbStatus.ForeColor = [System.Drawing.Color]::Green
         }
         catch {
-             $script:lblDbStatus.Text = "FAILURE: SQLServer Credentials did not work: $_"
+            $script:lblDbStatus.Text = "FAILURE: SQLServer Credentials did not work."
+            Write-Host "ERROR: $($_.Exception.Message)"
             $script:lblDbStatus.ForeColor = [System.Drawing.Color]::Red
         } 
         finally {
