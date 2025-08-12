@@ -857,7 +857,10 @@ function Create-SchedulePage {
         $script:dtpStartDate.Format = "Short"
         $script:dtpStartDate.Visible = $false
         $script:dtpStartDate.Name = "dtpStartDate"
-        $script:dtpStartDate.Value = $user_config.schedule.customStartDate
+        if ($user_config.schedule.customFromDate) {
+            $script:dtpStartDate.Value = [DateTime]::Parse($user_config.schedule.customFromDate)
+        } 
+        
         $panel.Controls.Add($script:dtpStartDate)
 
         $script:cmbRange.Add_SelectedIndexChanged({
