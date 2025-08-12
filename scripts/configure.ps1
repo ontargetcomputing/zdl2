@@ -1258,58 +1258,6 @@ $btnFinish.Add_Click({
     }
 })
 
-# function onSubmitButtonClick { 
-
-#   $zoomConfig = @{
-#     accountId    = $script..text
-#     clientId     = $ZoomClientID.text
-#     clientSecret = $ZoomClientSecret.text
-#   }
-
-#   $office365Config = @{
-#       appId        = $Office365AppID.text
-#       tenantName   = $Office365TenantName.text
-#       clientSecret = $Office365ClientSecret.text
-#   }
-
-#   $schedule = @{
-#     schedule = $ScheduleComboBox.SelectedItem.ToString() 
-#     custom = $ScheduleText.text
-#     dateRange = $DateRangeComboBox.SelectedItem.ToString()
-#     customFromDate = $DateRangeText.text
-#   }
-
-#   $sqlserver = @{
-#     server = $sqlServerHost.text
-#     port = $sqlServerPort.text
-#     database = $sqlServerDatabase.text
-#     schema = $sqlServerSchema.text
-#     userid = $sqlServerUserID.text
-#     password = $sqlServerPassword.text
-#   }
-
-#   # Create the main configuration object
-#   $config = @{
-#     zoom     = $zoomConfig
-#     office365 = $office365Config
-#     schedule = $schedule
-#     accounts = $AccountsList.text
-#     #sqlserver = $sqlserver
-#   }
-
-#   $configuration.CreateLocalAppdataFolder()
-#   $jsonString = $config | ConvertTo-Json
-#   $configuration.SaveUserConfiguration($jsonString)
-
-#   if ($database -eq $null) {
-#     Write-Host "The database is null."
-#     $databasePath = $configuration.GetSQLiteDatabasePath()
-#     $database = [SQLiteDatabase]::new($databasePath)
-#     #$database = [SQLServerDatabase]::new($config, $true)  
-#   } 
-#   $database.Connect()
-#   $database.InsertIntoAccountsToDownloadTable($AccountsList.Text)
-#   $database.Disconnect()
 
 #   scheduleOn
 
