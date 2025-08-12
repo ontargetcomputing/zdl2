@@ -28,11 +28,21 @@ class S3FileStorage : AbstractFileStorage {
     }
 
     Authenticate() {
-        # Simulate authentication (for real use, implement AWS STS or similar)
         Write-Host('S3FileStorage: Authenticating')
-        $this.SessionToken = "SIMULATED_TOKEN"
-        $this.LastRefresh = Get-Date
-        Write-Host "Authentication Successful"
+        try {
+            # Set AWS credentials for the session (profile is temporary)
+            Set-AWSCredential -AccessKey $this.AccessKey -SecretKey $this.SecretAccessKey -StoreAs 'ZoomDownloader'
+
+            # Try to list buckets to validate credentials
+            $buckets = Get-S3Bucket -ProfileName 'ZoomDownloader' -Region $this.Region
+            $this.SessionToken = "VALIDATED"
+            $this.LastRefresh = Get-Date
+            Write-Host "Authentication Successful"
+        } catch {
+            Write-Host "Unable to Authenticate: $($_.Exception.Message)"
+            $this.SessionToken = $null
+            throw "Invalid AWS credentials or insufficient permissions."
+        }
     }
 
     Upload([pscustomobject] $recording) {

@@ -28,7 +28,7 @@ class SQLServerDatabase : AbstractDatabase {
     SQLServerDatabase([object]$configuration) {
         Write-Host "SQLServerDatabase Constructor called"
         $this.configuration = [ZDAConfiguration]::new()
-        $sqlserver = $configuration.sqlserver
+        $sqlserver = $configuration.database
         $this.ConnectionString = "Server=$($sqlserver.server),$($sqlserver.port);Database=$($sqlserver.database);User ID=$($sqlserver.userid);Password=$($sqlserver.password);TrustServerCertificate=true"
         $this.Schema = $sqlserver.schema
     }
@@ -38,11 +38,11 @@ class SQLServerDatabase : AbstractDatabase {
         $this.configuration = [ZDAConfiguration]::new()
         $sqlserver = $configuration.sqlserver
         $this.ConnectionString = "Server=$($sqlserver.server),$($sqlserver.port);Database=$($sqlserver.database);User ID=$($sqlserver.userid);Password=$($sqlserver.password);TrustServerCertificate=true"
+        Write-Host("Connection String: $($this.ConnectionString)")
         $this.Schema = $sqlserver.schema
         if($create -eq $true) {
             $this.CreateDatabase()
-        }
-        
+        } 
     }
 
     [object]Connect() {
