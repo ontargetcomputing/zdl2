@@ -40,7 +40,7 @@ $progressBar = New-Object System.Windows.Forms.ProgressBar
 $progressBar.Location = New-Object System.Drawing.Point(20, 20)
 $progressBar.Size = New-Object System.Drawing.Size(540, 20)
 $progressBar.Minimum = 1
-$progressBar.Maximum = 6  # Changed to 6 pages total
+$progressBar.Maximum = 7  # Changed to 6 pages total
 $progressBar.Value = 1
 $form.Controls.Add($progressBar)
 
@@ -93,7 +93,8 @@ $pageTitles = @{
     3 = "Storage Selection"
     4 = "Database Configuration"
     5 = "Schedule Task"
-    6 = "Setup Summary"
+    6 = "Accounts To Download"
+    7 = "Setup Summary"
 }
 
 # Function to create Welcome page
@@ -891,6 +892,37 @@ function Create-SchedulePage {
         })
     return $panel
 }
+
+# Function to create Accounts To Download page
+function Create-AccountsToDownload {
+    $panel = New-Object System.Windows.Forms.Panel
+    $panel.Size = New-Object System.Drawing.Size(640, 300)
+
+    $lblTitle = New-Object System.Windows.Forms.Label
+    $lblTitle.Text = "Accounts to Download:"
+    $lblTitle.Font = New-Object System.Drawing.Font("Microsoft Sans Serif", 10, [System.Drawing.FontStyle]::Bold)
+    $lblTitle.Location = New-Object System.Drawing.Point(30, 20)
+    $lblTitle.Size = New-Object System.Drawing.Size(400, 20)
+    $panel.Controls.Add($lblTitle)
+
+    $lblDesc = New-Object System.Windows.Forms.Label
+    $lblDesc.Text = "Enter one email address per line. These accounts will be downloaded."
+    $lblDesc.Location = New-Object System.Drawing.Point(30, 50)
+    $lblDesc.Size = New-Object System.Drawing.Size(580, 30)
+    $panel.Controls.Add($lblDesc)
+
+    $script:txtAccounts = New-Object System.Windows.Forms.TextBox
+    $script:txtAccounts.Location = New-Object System.Drawing.Point(30, 90)
+    $script:txtAccounts.Size = New-Object System.Drawing.Size(580, 150)
+    $script:txtAccounts.Multiline = $true
+    $script:txtAccounts.ScrollBars = "Vertical"
+    $script:txtAccounts.Name = "txtAccounts"
+    $script:txtAccounts.Text = $user_config.accounts -join "`r`n"
+    $panel.Controls.Add($script:txtAccounts)
+
+    return $panel
+}
+
 # Page controls array
 $pageControls = @(
     (Create-WelcomePage),
@@ -898,6 +930,7 @@ $pageControls = @(
     (Create-StorageSelectionPage),
     (Create-DatabasePage),
     (Create-SchedulePage),
+    (Create-AccountsToDownload),
     (Create-SummaryPage)
 )
 
@@ -910,8 +943,8 @@ function Show-CurrentPage {
     
     # Update button states
     $btnPrevious.Enabled = $script:currentPage -gt 1
-    $btnNext.Visible = $script:currentPage -lt 6
-    $btnFinish.Visible = $script:currentPage -eq 6
+    $btnNext.Visible = $script:currentPage -lt 7
+    $btnFinish.Visible = $script:currentPage -eq 7
 
     # Update summary if on last page
     if ($script:currentPage -eq 6) {
@@ -1071,6 +1104,11 @@ function Validate-CurrentPage {
                 $global:Config.Schedule.customFromDate = $null
             }   
         }
+        6 { # Accounts to Download
+            $currentPanel = $pageControls[5]
+            $accountsText = $currentPanel.Controls["txtAccounts"].Text.Trim()
+            $global:Config.Accounts = $accountsText -split "`r`n" | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne "" }
+        }
     }
     return $true
 }
@@ -1172,13 +1210,14 @@ $btnFinish.Add_Click({
             customFromDate = $global:Config.Schedule.customFromDate
         }
 
+        $accounts = $global:Config.Accounts -join "`r`n"
+
         $config = @{
             zoom     = $zoomConfig
             storage  = $storageConfig
             database = $databaseConfig
             schedule = $schedule
-            # accounts = $AccountsList.text
-            #sqlserver = $sqlserver
+            accounts = $accounts
         }
 
         $configuration.CreateLocalAppdataFolder()
