@@ -796,6 +796,7 @@ function Create-SchedulePage {
     $script:cmbSchedule.Size = New-Object System.Drawing.Size(200, 25)
     $script:cmbSchedule.DropDownStyle = "DropDownList"
     $script:cmbSchedule.Name = "cmbSchedule"
+    #$script:cmdSchedule.SelectedItem = $user_config.schedule.schedule
     $panel.Controls.Add($script:cmbSchedule)
 
     $script:lblCustom = New-Object System.Windows.Forms.Label
@@ -811,6 +812,7 @@ function Create-SchedulePage {
     $script:txtCustom.Multiline = $true
     $script:txtCustom.Name = "txtCustom"
     $script:txtCustom.Visible = $false
+    $script:txtCustom.Text = $user_config.schedule.custom
     $panel.Controls.Add($script:txtCustom)
 
     $script:cmbSchedule.Add_SelectedIndexChanged({
@@ -855,6 +857,7 @@ function Create-SchedulePage {
         $script:dtpStartDate.Format = "Short"
         $script:dtpStartDate.Visible = $false
         $script:dtpStartDate.Name = "dtpStartDate"
+        $script:dtpStartDate.Value = $user_config.schedule.customStartDate
         $panel.Controls.Add($script:dtpStartDate)
 
         $script:cmbRange.Add_SelectedIndexChanged({
@@ -1016,7 +1019,7 @@ function Validate-CurrentPage {
             
             $global:Config.Schedule.schedule = $schedule
             $global:Config.Schedule.dateRange = $dateRange
-            
+
             if ([string]::IsNullOrWhiteSpace($schedule)) {
                 [System.Windows.Forms.MessageBox]::Show("Schedule is required.", "Validation Error")
                 return $false
