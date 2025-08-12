@@ -1,4 +1,5 @@
 using module ../Modules/FileStorage/Classes/OneDriveFileStorage.psm1
+using module ../Modules/FileStorage/Classes/S3FileStorage.psm1
 using module ../Modules/Zoom/Classes/ZoomService.psm1
 using module ../Modules/Configuration/Classes/ZDAConfiguration.psm1
 using module ../Modules/Database/Classes/SQLServerDatabase.psm1
@@ -505,10 +506,31 @@ function Create-StorageSelectionPage {
         $script:lbls3Status.Text = "Testing S3 connection..."
         $script:lblS3Status.ForeColor = [System.Drawing.Color]::Blue
         $form.Update()
-        Start-Sleep -Milliseconds 1200
-        $script:lblS3Status.Text = "SUCCESS: Simulated S3 connection. (Replace with real API call)"
-        $script:lblS3Status.ForeColor = [System.Drawing.Color]::Green
-        $this.Enabled = $true
+        
+        try {
+            $s3FileStorage = [S3FileStorage]::new(
+                $script:txtAccessKey.Text.Trim(),
+                $script:txtSecretKey.Text.Trim(),
+                $script:txtBucket.Text.Trim(),
+                $script:cmbRegion.SelectedItem
+            )
+            $s3FileStorage.Authenticate()
+            Write-Host "INFO: S3 Authentication successful."
+            $script:lblS3Status.Text = "S3 Authentication successful"
+            $script:lblS3Status.ForeColor = [System.Drawing.Color]::Green
+
+            Write-Host "S3 connection test successful."
+            
+            $script:lblS3Status.Text = "SUCCESS: Connection successful!"
+            $script:lblS3Status.ForeColor = [System.Drawing.Color]::Green   
+        }
+        catch {
+            $script:lblS3Status.Text = "ERROR: Connection test failed., $($_.Exception.Message)"
+            $script:lblS3Status.ForeColor = [System.Drawing.Color]::Red
+        }
+        finally {
+            $script:btnTestS3.Enabled = $true    
+        }
     })
     $pnlS3.Controls.Add($script:btnTestS3)
 
