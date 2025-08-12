@@ -791,12 +791,11 @@ function Create-SchedulePage {
 
     $script:cmbSchedule = New-Object System.Windows.Forms.ComboBox
     $script:cmbSchedule.Items.AddRange(@('Every Day at Midnight','Every Hour','Every 5 Minutes','Immediate Single Run', 'Custom...'))
-
     $script:cmbSchedule.Location = New-Object System.Drawing.Point(140, 100)
     $script:cmbSchedule.Size = New-Object System.Drawing.Size(200, 25)
     $script:cmbSchedule.DropDownStyle = "DropDownList"
     $script:cmbSchedule.Name = "cmbSchedule"
-    #$script:cmdSchedule.SelectedItem = $user_config.schedule.schedule
+    $script:cmbSchedule.SelectedItem = $user_config.schedule.schedule
     $panel.Controls.Add($script:cmbSchedule)
 
     $script:lblCustom = New-Object System.Windows.Forms.Label
@@ -814,6 +813,14 @@ function Create-SchedulePage {
     $script:txtCustom.Visible = $false
     $script:txtCustom.Text = $user_config.schedule.custom
     $panel.Controls.Add($script:txtCustom)
+
+    if($script:cmbSchedule.SelectedItem -ne "Custom...") {
+        $script:lblCustom.Visible = $false
+        $script:txtCustom.Visible = $false
+    } else {
+        $script:lblCustom.Visible = $true
+        $script:txtCustom.Visible = $true
+    }
 
     $script:cmbSchedule.Add_SelectedIndexChanged({
         if ($this.SelectedItem -eq "Custom...") {
@@ -842,13 +849,15 @@ function Create-SchedulePage {
         $script:cmbRange.Size = New-Object System.Drawing.Size(180, 20)
         $script:cmbRange.DropDownStyle = "DropDownList"
         $script:cmbRange.Name = "cmbRange"
+        $script:cmbRange.SelectedItem = $user_config.schedule.dateRange
         $panel.Controls.Add($script:cmbRange)
 
         $script:lblStartDate = New-Object System.Windows.Forms.Label
         $script:lblStartDate.Text = "Start Date:"
         $script:lblStartDate.Location = New-Object System.Drawing.Point(50, 240)
         $script:lblStartDate.Size = New-Object System.Drawing.Size(120, 20)
-        $script:lblStartDate.Visible = $false
+
+`        
         $panel.Controls.Add($script:lblStartDate)
 
         $script:dtpStartDate = New-Object System.Windows.Forms.DateTimePicker
@@ -862,6 +871,14 @@ function Create-SchedulePage {
         } 
         
         $panel.Controls.Add($script:dtpStartDate)
+
+        if($script:cmbRange.SelectedItem -ne "Custom start date...") {
+            $script:lblStartDate.Visible = $false
+            $script:dtpStartDate.Visible = $false
+        } else {
+            $script:lblStartDate.Visible = $true
+            $script:dtpStartDate.Visible = $true
+        }
 
         $script:cmbRange.Add_SelectedIndexChanged({
             if ($this.SelectedItem -eq "Custom start date...") {
