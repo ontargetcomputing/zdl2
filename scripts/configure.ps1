@@ -1272,17 +1272,51 @@ $btnFinish.Add_Click({
             } 
         } 
 
-        [System.Windows.Forms.MessageBox]::Show("Configuration saved to: $configPath", "Setup Complete")
+        scheduleOn
+        [System.Windows.Forms.MessageBox]::Show("Configuration saved and Job Scheduled", "Setup Complete")
+
         $form.DialogResult = "OK"
         $form.Close()
     }
 })
 
 
-#   scheduleOn
+function scheduleOn { 
+      scheduleOff
+      $script = (Join-Path $PSScriptRoot '\zoomdownloader.ps1')
+      $arguement = "-noprofile -executionpolicy bypass ", $script -join " "
+      Write-Host($arguement)
+      $action = New-ScheduledTaskAction -Execute "PowerShell.exe" -Argument $arguement -WorkingDirectory $PSScriptRoot
 
-#   [System.Windows.Forms.MessageBox]::Show("ZoomDownloader scheduled.", "Message Box", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
-# }
+      if ( $script:cmbSchedule.SelectedIndex -eq 0 ) {
+        $commandString =  "New-ScheduledTaskTrigger", "-At 0:00 -Daily" -join " "
+      } elseif ( $script:cmbSchedule.SelectedIndex -eq 1) {
+        $commandString =  "New-ScheduledTaskTrigger", "-Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 60) -RepetitionDuration (New-TimeSpan -Days (5 * 365))" -join " "        
+      } elseif ( $script:cmbSchedule.SelectedIndex -eq 2) {
+        $commandString =  "New-ScheduledTaskTrigger", "-Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 5) -RepetitionDuration (New-TimeSpan -Days (5 * 365))" -join " "
+      } elseif ( $script:cmbSchedule.SelectedIndex -eq 3) {
+        $commandString =  "New-ScheduledTaskTrigger", "-At (Get-Date) -Once" -join " "
+      } elseif ( $script:cmbSchedule.SelectedIndex -eq 4) {
+        $commandString =  "New-ScheduledTaskTrigger", $script.textCustom.text -join " "
+      }
+
+      Write-Host "Scheduling with '$commandString'."
+      $trigger = Invoke-Expression $commandString
+      $principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest
+      Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Principal $principal
+      Write-Host "Scheduled the task '$taskName' to run even if the user logs out."
+}
+
+function scheduleOff { 
+  try {
+    Get-ScheduledTask -TaskName $taskName -ErrorAction Stop
+    Unregister-ScheduledTask -TaskName $taskName -Confirm:$false
+    Write-Host "The task '$taskName' has been unscheduled."
+  }
+  catch {
+   
+  }    
+}
 
 $btnCancel.Add_Click({
     $result = [System.Windows.Forms.MessageBox]::Show("Are you sure you want to cancel the setup?", "Cancel Setup", "YesNo", "Question")
@@ -1347,7 +1381,6 @@ $result = $form.ShowDialog()
 
 if ($result -eq "OK") {
     Write-Host "Setup completed successfully!" -ForegroundColor Green
-    Write-host "Configuration saved to: $(Join-Path $env:USERPROFILE "ZoomDownloaderConfig.json")" -ForegroundColor Green
 } else {
     Write-Host "Setup was cancelled." -ForegroundColor Yellow
 }
