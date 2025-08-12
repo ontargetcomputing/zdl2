@@ -16,24 +16,6 @@ Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
 
-
-# Global configuration storage
-if (-not $global:Config) {
-    $global:Config = @{}
-}
-if (-not $global:Config.Zoom) {
-    $global:Config.Zoom = @{}
-}
-if (-not $global:Config.Database) {
-    $global:Config.Database = @{}
-}
-if (-not $global:Config.Storage) {
-    $global:Config.Storage = @{}
-}
-if (-not $global:Config.Schedule) {
-    $global:Config.Schedule = @{}
-}
-
 # Current page tracking
 $script:currentPage = 1
 
@@ -818,16 +800,15 @@ function Create-SchedulePage {
 
     $script:lblCustom = New-Object System.Windows.Forms.Label
     $script:lblCustom.Text = "Custom PowerShell Schedule Expression:"
-    $script:lblCustom.Location = New-Object System.Drawing.Point(30, 140)
+    $script:lblCustom.Location = New-Object System.Drawing.Point(50, 140)
     $script:lblCustom.Size = New-Object System.Drawing.Size(300, 20)
     $script:lblCustom.Visible = $false
     $panel.Controls.Add($script:lblCustom)
 
     $script:txtCustom = New-Object System.Windows.Forms.TextBox
-    $script:txtCustom.Location = New-Object System.Drawing.Point(30, 170)
-    $script:txtCustom.Size = New-Object System.Drawing.Size(400, 60)
+    $script:txtCustom.Location = New-Object System.Drawing.Point(50, 165)
+    $script:txtCustom.Size = New-Object System.Drawing.Size(400, 20)
     $script:txtCustom.Multiline = $true
-    $script:txtCustom.ScrollBars = "Vertical"
     $script:txtCustom.Name = "txtCustom"
     $script:txtCustom.Visible = $false
     $panel.Controls.Add($script:txtCustom)
@@ -842,6 +823,49 @@ function Create-SchedulePage {
         }
     })
 
+        # Add range dropdown
+        $lblRange = New-Object System.Windows.Forms.Label
+        $lblRange.Text = "Download Range:"
+        $lblRange.Location = New-Object System.Drawing.Point(30, 210)
+        $lblRange.Size = New-Object System.Drawing.Size(100, 20)
+        $panel.Controls.Add($lblRange)
+
+        $script:cmbRange = New-Object System.Windows.Forms.ComboBox
+        $script:cmbRange.Items.AddRange(@(
+            "Last 2 weeks",
+            "Last month",
+            "Custom start date..."
+        ))
+        $script:cmbRange.Location = New-Object System.Drawing.Point(140, 210)
+        $script:cmbRange.Size = New-Object System.Drawing.Size(180, 20)
+        $script:cmbRange.DropDownStyle = "DropDownList"
+        $script:cmbRange.Name = "cmbRange"
+        $panel.Controls.Add($script:cmbRange)
+
+        $script:lblStartDate = New-Object System.Windows.Forms.Label
+        $script:lblStartDate.Text = "Start Date:"
+        $script:lblStartDate.Location = New-Object System.Drawing.Point(50, 240)
+        $script:lblStartDate.Size = New-Object System.Drawing.Size(120, 20)
+        $script:lblStartDate.Visible = $false
+        $panel.Controls.Add($script:lblStartDate)
+
+        $script:dtpStartDate = New-Object System.Windows.Forms.DateTimePicker
+        $script:dtpStartDate.Location = New-Object System.Drawing.Point(160, 240)
+        $script:dtpStartDate.Size = New-Object System.Drawing.Size(180, 25)
+        $script:dtpStartDate.Format = "Short"
+        $script:dtpStartDate.Visible = $false
+        $script:dtpStartDate.Name = "dtpStartDate"
+        $panel.Controls.Add($script:dtpStartDate)
+
+        $script:cmbRange.Add_SelectedIndexChanged({
+            if ($this.SelectedItem -eq "Custom start date...") {
+                $script:lblStartDate.Visible = $true
+                $script:dtpStartDate.Visible = $true
+            } else {
+                $script:lblStartDate.Visible = $false
+                $script:dtpStartDate.Visible = $false
+            }
+        })
     return $panel
 }
 # Page controls array
@@ -987,14 +1011,42 @@ function Validate-CurrentPage {
         }
         5 { # Schedule
             $currentPanel = $pageControls[4]
-            $schedule = $currentPanel.Controls["cmbSchedule"].SelectedItem.Trim()
-
+            $schedule = $script:cmbSchedule.SelectedItem.Trim()
+            $dateRange = $script:cmbRange.SelectedItem.Trim()
+            
+            $global:Config.Schedule.schedule = $schedule
+            $global:Config.Schedule.dateRange = $dateRange
+            
             if ([string]::IsNullOrWhiteSpace($schedule)) {
                 [System.Windows.Forms.MessageBox]::Show("Schedule is required.", "Validation Error")
                 return $false
             }
+            if ([string]::IsNullOrWhiteSpace($dateRange)) {
+                [System.Windows.Forms.MessageBox]::Show("Date Range is required.", "Validation Error")
+                return $false
+            }   
 
-            $global:Config.Schedule.Schedule = $schedule
+            if( $schedule -eq "Custom..." ) {
+                $customSchedule = $script:txtCustom.Text.Trim()
+                if ([string]::IsNullOrWhiteSpace($customSchedule)) {
+                    [System.Windows.Forms.MessageBox]::Show("Custom schedule expression is required.", "Validation Error")
+                    return $false
+                }
+                $global:Config.Schedule.custom = $customSchedule
+            } else {
+                $global:Config.Schedule.custom = $null
+            }
+
+            if( $dateRange -eq "Custom start date..." ) {
+                $customFromDate = $script:dtpStartDate.Value.ToString("yyyy-MM-dd")
+                if ([string]::IsNullOrWhiteSpace($customFromDate)) {
+                    [System.Windows.Forms.MessageBox]::Show("Custom start date is required.", "Validation Error")
+                    return $false
+                }
+                $global:Config.Schedule.customFromDate = $customFromDate
+            } else {
+                $global:Config.Schedule.customFromDate = $null
+            }   
         }
     }
     return $true
@@ -1092,9 +1144,9 @@ $btnFinish.Add_Click({
 
         $schedule = @{
             schedule = $global:Config.Schedule.schedule
-            # custom = $global:Config.Schedule.custom
-            # dateRange = $global:Config.Schedule.dateRange
-            # customFromDate = $global:Config.Schedule.customFromDate
+            custom = $global:Config.Schedule.custom
+            dateRange = $global:Config.Schedule.dateRange
+            customFromDate = $global:Config.Schedule.customFromDate
         }
 
         $config = @{
