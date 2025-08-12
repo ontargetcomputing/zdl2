@@ -16,6 +16,14 @@ Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
 
+
+# Global configuration storage initialization
+if (-not $global:Config) { $global:Config = @{} }
+if (-not $global:Config.Zoom) { $global:Config.Zoom = @{} }
+if (-not $global:Config.Database) { $global:Config.Database = @{} }
+if (-not $global:Config.Storage) { $global:Config.Storage = @{} }
+if (-not $global:Config.Schedule) { $global:Config.Schedule = @{} }
+
 # Current page tracking
 $script:currentPage = 1
 
@@ -974,6 +982,7 @@ function Validate-CurrentPage {
                 return $false
             }
             
+            if (-not $global:Config.Zoom) { $global:Config.Zoom = @{} }
             $global:Config.Zoom.ApiKey = $apiKey
             $global:Config.Zoom.ApiSecret = $apiSecret
             $global:Config.Zoom.AccountId = $accountId
