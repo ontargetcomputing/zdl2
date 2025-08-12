@@ -706,11 +706,11 @@ function Create-DatabasePage {
             sqlserver = $sqlserver
         }
 
-        $database = [SQLServerDatabase]::new($config, $false)  
+        $script:database = [SQLServerDatabase]::new($config, $false)  
         
         try {
-            $database.Connect()
-            $database.Disconnect()
+            $script:database.Connect()
+            $script:database.Disconnect()
             $script:lblDbStatus.Text = "SUCCESS: SQLServer Credentials Worked."
             $script:lblDbStatus.ForeColor = [System.Drawing.Color]::Green
         }
@@ -1224,17 +1224,34 @@ $btnFinish.Add_Click({
         $jsonString = $config | ConvertTo-Json
         $configuration.SaveUserConfiguration($jsonString)
 
-        # if ($database -eq $null) {
-        #     Write-Host "The database is null."
-        #     $databasePath = $configuration.GetSQLiteDatabasePath()
-        #     $database = [SQLiteDatabase]::new($databasePath)
-        #     #$database = [SQLServerDatabase]::new($config, $true)  
-        # } 
-        # $database.Connect()
-        # $database.InsertIntoAccountsToDownloadTable($AccountsList.Text)
-        # $database.Disconnect()
+        if ($database -eq $null) {
+            Write-Host "The database is null."
 
-        
+            $sqlserver = @{
+                server = $script:txtServer.text
+                port = $script:txtPort.text
+                database = $script:txtDatabase.text
+                schema = $script:txtSchema.text
+                userid = $script:txtUsername.text
+                password = $script:txtPassword.text
+            }
+
+            $config = @{
+                sqlserver = $sqlserver
+            }
+
+            $script:database = [SQLServerDatabase]::new($config, $false)  
+            
+            try {
+                $database.Connect()
+                $database.InsertIntoAccountsToDownloadTable($accounts)
+                $database.Disconnect()
+            }
+            catch {
+                Write-Host "ERROR: $($_.Exception.Message)"
+            } 
+        } 
+
         [System.Windows.Forms.MessageBox]::Show("Configuration saved to: $configPath", "Setup Complete")
         $form.DialogResult = "OK"
         $form.Close()
