@@ -1,5 +1,6 @@
 using module ../Modules/Database/Classes/SQLServerDatabase.psm1
 using module ../Modules/FileStorage/Classes/OneDriveFileStorage.psm1
+using module ../Modules/FileStorage/Classes/S3FileStorage.psm1
 using module ../Modules/Jobs/Classes/UploadJobs.psm1
 using module ../Modules/Configuration/Classes/ZDAConfiguration.psm1
 
@@ -8,20 +9,30 @@ $configuration.StartTranscript("upload")
 
 $user_config = $configuration.ReadUserConfiguration()
 
-if ($user_config.storage.type -eq 'Local') {
-  Write-Host "Storage type is Local. Nothing to do, exiting upload script."
-  exit
+# Select file storage class based on type
+$fileStorage = $null
+switch ($user_config.storage.type) {
+    'OneDrive' {
+        $office365 = $user_config.storage
+        $fileStorage = [OneDriveFileStorage]::new($office365.appId, $office365.clientSecret, $office365.tenantName)
+    }
+    'S3' {
+        $fileStorage = [S3FileStorage]::new(
+            $user_config.storage.accessKey,
+            $user_config.storage.secretAccessKey,
+            $user_config.storage.bucketName,
+            $user_config.storage.region
+        )
+    }
+    default {
+        Write-Host "Unsupported storage type: $($user_config.storage.type). Exiting upload script."
+        exit
+    }
 }
 
 $global:outputData = @()
 $global:uploadCount = 0;
 $global:NOTUPLOADED = 0;
-
-# Create an instance of the Person class
-$office365 = $user_config.office365
-$oneDriveFileStorage = [OneDriveFileStorage]::new($office365.appId, $office365.clientSecret, $office365.tenantName)
-
-
 
 $database = [SQLServerDatabase]::new($user_config)
 $database.Connect()
@@ -39,7 +50,7 @@ foreach ($recording in $TO_UPLOAD) {
   $uploadJobs.Throttle() 
   try {
     Write-Host ("Attempting to upload : $($recording.GUID)");
-    $oneDriveFileStorage.Upload($recording)
+    $fileStorage.Upload($recording)
   } catch {
     Write-Host "Failed to upload: $($recording.GUID), $($_.Exception.Message)"
   }
