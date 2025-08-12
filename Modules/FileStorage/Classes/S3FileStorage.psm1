@@ -49,7 +49,7 @@ class S3FileStorage : AbstractFileStorage {
         Write-Host("S3FileStorage: Starting upload job for recording GUID: $($recording.GUID)")
         Start-Job -Name $recording.GUID -ArgumentList $recording, $this.AccessKey, $this.SecretAccessKey, $this.BucketName, $this.Region, $this.UserAgent -ScriptBlock {
             param($recording, $accessKey, $secretAccessKey, $bucketName, $region, $userAgent)
-
+            
             class UploadJob {
                 $recording
                 [string] $accessKey
@@ -83,10 +83,12 @@ class S3FileStorage : AbstractFileStorage {
                     }
                 }
             }
-
+            Write-Host("S3FileStorage: Upload job started for recording GUID: $($recording.GUID)")  
             $uploadJob = [UploadJob]::new($recording, $accessKey, $secretAccessKey, $bucketName, $region, $userAgent)
             try {
+                Write-Host("Uploading")
                 $uploadSuccess = $uploadJob.UploadFile()
+                Write-Host("Uploaded")
             } catch {
                 Write-Host "Unable to upload $($recording.GUID): $($_.Exception.Message)"
                 $uploadSuccess = $false
