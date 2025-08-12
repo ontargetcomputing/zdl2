@@ -756,7 +756,7 @@ function Create-SummaryPage {
     
     $txtSummary = New-Object System.Windows.Forms.TextBox
     $txtSummary.Location = New-Object System.Drawing.Point(30, 60)
-    $txtSummary.Size = New-Object System.Drawing.Size(480, 200)
+    $txtSummary.Size = New-Object System.Drawing.Size(480, 300)
     $txtSummary.Multiline = $true
     $txtSummary.ScrollBars = "Vertical"
     $txtSummary.ReadOnly = $true
@@ -1115,13 +1115,7 @@ function Validate-CurrentPage {
 
 # Function to update summary
 function Update-Summary {
-    $storageInfo = ""
-    switch ($global:Config.Storage.Type) {
-        "Local" { $storageInfo = "Local Storage: $($global:Config.Storage.Path)" }
-        "OneDrive" { $storageInfo = "OneDrive Folder: $($global:Config.Storage.Folder)" }
-        "S3" { $storageInfo = "S3 Bucket: $($global:Config.Storage.Bucket) (Region: $($global:Config.Storage.Region))" }
-        default { $storageInfo = "Not configured" }
-    }
+
     
     $summaryText = @"
 Zoom Configuration:
@@ -1129,18 +1123,44 @@ Zoom Configuration:
   Account ID: $($global:Config.Zoom.AccountId)
 
 Storage Configuration:
-  $storageInfo
+  Type: $(if ($global:Config.Storage.Type -eq "Local") { "Local Storage" } else { $global:Config.Storage.Type })
+  $(if ($global:Config.Storage.Type -eq "OneDrive") {
+    "App ID: $($global:Config.Storage.AppId)"
+    "$([Environment]::NewLine)"
+    "Tenant Name: $($global:Config.Storage.TenantName)"
+  } elseif ($global:Config.Storage.Type -eq "S3") {
+    "Access Key: $($global:Config.Storage.AccessKey)"
+    "$([Environment]::NewLine)"
+    "Bucket Name: $($global:Config.Storage.Bucket)"
+    "$([Environment]::NewLine)"
+    "Region: $($global:Config.Storage.Region)"
+  })
 
 Database Configuration:
-  Type: $($global:Config.Database.Type)
+  Type: SQL Server
   Server: $($global:Config.Database.Server)
+  Port: $($global:Config.Database.Port)
   Database: $($global:Config.Database.Database)
+  Schema: $($global:Config.Database.Schema)
   Username: $($global:Config.Database.Username)
+
+Schedule Configuration:
+  Schedule: $($global:Config.Schedule.schedule)
+  $(if ($global:Config.Schedule.schedule -eq "Custom...") {
+    "   Custom Schedule: $($global:Config.Schedule.custom)"
+  })
+  Date Range: $($global:Config.Schedule.dateRange)
+  $(if ($global:Config.Schedule.dateRange -eq "Custom start date...") {
+    "   Custom start date: $($global:Config.Schedule.customFromDate)"
+  })
+
+Accounts to Download:
+$(($global:Config.Accounts | ForEach-Object { "    $_" }) -join "`r`n")
 
 Click Finish to complete the setup.
 "@
     
-    $currentPanel = $pageControls[4]
+    $currentPanel = $pageControls[6]
 
     $txtSummary = $currentPanel.Controls | Where-Object { $_.Name -eq "txtSummary" }
     if ($txtSummary) { $txtSummary.Text = $summaryText }    
