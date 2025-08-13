@@ -16,8 +16,8 @@ class UploadJobs : AbstractJobs {
             foreach ($job in $jobs) {
                 $result = Receive-Job $job
                 if( $result.uploadSuccess -eq $true ) {
-                    Write-Host ("Processing Completed Successful Upload for GUID:$($result.GUID_ID) to $($result.ONEDRIVEPATH)")
-                    $results = $this.database.UpdateUploadedRecording($result.GUID_ID, $result.uploadSuccess, $result.ONEDRIVEPATH)
+                    Write-Host ("Processing Completed Successful Upload for GUID:$($result.GUID_ID) to $($result.UPLOADPATH)")
+                    $results = $this.database.UpdateUploadedRecording($result.GUID_ID, $result.uploadSuccess, $result.UPLOADPATH)
                     $uploadCount += $results.uploadCount
                     $NOTUPLOADED += $results.NOTUPLOADED 
                 } else {

@@ -301,7 +301,7 @@ class OneDriveFileStorage : AbstractFileStorage {
         [pscustomobject]@{
           uploadSuccess   = $uploadSuccess
           GUID_ID         = $recording.GUID
-          ONEDRIVEPATH    = $uploadJob.OneDrivepath
+          UPLOADPATH      = $uploadJob.OneDrivepath
           USERID          = $uploadJob.UserID
           ROOTFOLDERID    = $uploadJob.RootFolderID
           MEETINGFOLDERID = $uploadJob.MeetingFolderID
