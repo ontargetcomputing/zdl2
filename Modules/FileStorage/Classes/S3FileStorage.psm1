@@ -1,6 +1,32 @@
 using module ../Modules/FileStorage/Classes/AbstractFileStorage.psm1
 
 class S3FileStorage : AbstractFileStorage {
+    [string] $RootFolder = "Zoom Cloud Recordings"
+
+    [string] CreateRootFolder() {
+        $folderKey = "$($this.RootFolder)/"
+        try {
+            Write-S3Object -BucketName $this.BucketName -Key $folderKey -Content "" -Region $this.Region -AccessKey $this.AccessKey -SecretKey $this.SecretAccessKey
+            Write-Host "Created root folder in S3: $folderKey"
+            return $folderKey
+        } catch {
+            Write-Host "Failed to create root folder: $($_.Exception.Message)"
+            return $folderKey
+        }
+    }
+
+    [string] CreateMeetingFolder($meetingId, $topic) {
+        $meetingFolderName = "$meetingId - $topic"
+        $meetingFolderKey = "$($this.RootFolder)/$meetingFolderName/"
+        try {
+            Write-S3Object -BucketName $this.BucketName -Key $meetingFolderKey -Content "" -Region $this.Region -AccessKey $this.AccessKey -SecretKey $this.SecretAccessKey
+            Write-Host "Created meeting folder in S3: $meetingFolderKey"
+            return $meetingFolderKey
+        } catch {
+            Write-Host "Failed to create meeting folder: $($_.Exception.Message)"
+            return $meetingFolderKey
+        }
+    }
     [string] $AccessKey
     [string] $SecretAccessKey
     [string] $BucketName
@@ -83,24 +109,18 @@ class S3FileStorage : AbstractFileStorage {
                     }
                 }
             }
-            Write-Host("S3FileStorage: Upload job started for recording GUID: $($recording.GUID)")  
-            $uploadJob = [UploadJob]::new($recording, $accessKey, $secretAccessKey, $bucketName, $region, $userAgent)
+            $this.Authenticate()
+            $rootFolderKey = $this.CreateRootFolder()
+            $meetingFolderKey = $this.CreateMeetingFolder($recording.MEETING_ID, $recording.TOPIC)
+            $FileToUpload = $recording.DOWNLOAD_PATH
+            $FileName = (Split-Path $FileToUpload -Leaf)
+            $Key = "$meetingFolderKey$FileName"
+            Write-Host("Uploading $($FileToUpload) as $($Key) to S3 bucket $($this.BucketName)")
             try {
-                Write-Host("Uploading")
-                $uploadSuccess = $uploadJob.UploadFile()
-                Write-Host("Uploaded")
+                Write-S3Object -BucketName $this.BucketName -File $FileToUpload -Key $Key -Region $this.Region -AccessKey $this.AccessKey -SecretKey $this.SecretAccessKey
+                Write-Host("Upload complete for $($Key)")
+                return $Key
             } catch {
-                Write-Host "Unable to upload $($recording.GUID): $($_.Exception.Message)"
-                $uploadSuccess = $false
+                Write-Host "Failed to upload $($Key): $($_.Exception.Message)"
+                return $null
             }
-            [pscustomobject]@{
-                uploadSuccess = $uploadSuccess
-                GUID_ID       = $recording.GUID
-                S3PATH        = $uploadJob.s3Path
-                BUCKET        = $uploadJob.bucketName
-                HOST_EMAIL    = $recording.HOST_EMAIL
-                MEETING_ID    = $recording.MEETING_ID
-            }
-        }
-    }
-}
