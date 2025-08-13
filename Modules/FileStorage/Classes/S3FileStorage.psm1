@@ -109,18 +109,6 @@ class S3FileStorage : AbstractFileStorage {
                     }
                 }
             }
-            $this.Authenticate()
-            $rootFolderKey = $this.CreateRootFolder()
-            $meetingFolderKey = $this.CreateMeetingFolder($recording.MEETING_ID, $recording.TOPIC)
-            $FileToUpload = $recording.DOWNLOAD_PATH
-            $FileName = (Split-Path $FileToUpload -Leaf)
-            $Key = "$meetingFolderKey$FileName"
-            Write-Host("Uploading $($FileToUpload) as $($Key) to S3 bucket $($this.BucketName)")
-            try {
-                Write-S3Object -BucketName $this.BucketName -File $FileToUpload -Key $Key -Region $this.Region -AccessKey $this.AccessKey -SecretKey $this.SecretAccessKey
-                Write-Host("Upload complete for $($Key)")
-                return $Key
-            } catch {
-                Write-Host "Failed to upload $($Key): $($_.Exception.Message)"
-                return $null
-            }
+        }
+    }
+}
