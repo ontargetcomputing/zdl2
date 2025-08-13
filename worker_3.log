@@ -1,0 +1,124 @@
+﻿[2025-08-13 04:07:58.819] [INFO] Worker3(T15): Worker started
+[2025-08-13 04:07:58.838] [INFO] Worker3(T15): Worker 3 (Thread 15) started - processing records with Uploaded=false
+[2025-08-13 04:07:58.840] [INFO] Worker3(T15): here i am
+[2025-08-13 04:07:58.866] [INFO] Worker3(T15): Worker 3 - Processing batch of 2 records
+[2025-08-13 04:07:58.867] [INFO] Worker3(T15): HELP!!!!!
+[2025-08-13 04:07:58.868] [INFO] Worker3(T15): 
+[2025-08-13 04:08:03.879] [INFO] Worker3(T15): here i am
+[2025-08-13 04:08:03.890] [INFO] Worker3(T15): Worker 3 - Processing batch of 2 records
+[2025-08-13 04:08:03.891] [INFO] Worker3(T15): HELP!!!!!
+[2025-08-13 04:08:03.892] [INFO] Worker3(T15): 
+[2025-08-13 04:08:08.894] [INFO] Worker3(T15): here i am
+[2025-08-13 04:08:08.904] [INFO] Worker3(T15): Worker 3 - Processing batch of 2 records
+[2025-08-13 04:08:08.904] [INFO] Worker3(T15): HELP!!!!!
+[2025-08-13 04:08:08.904] [INFO] Worker3(T15): 
+[2025-08-13 04:08:13.905] [INFO] Worker3(T15): here i am
+[2025-08-13 04:08:13.913] [INFO] Worker3(T15): Worker 3 - Processing batch of 2 records
+[2025-08-13 04:08:13.913] [INFO] Worker3(T15): HELP!!!!!
+[2025-08-13 04:08:13.917] [INFO] Worker3(T15): 
+[2025-08-13 04:08:18.920] [INFO] Worker3(T15): here i am
+[2025-08-13 04:08:18.920] [INFO] Worker3(T15): Worker 3 - Processing batch of 2 records
+[2025-08-13 04:08:18.920] [INFO] Worker3(T15): HELP!!!!!
+[2025-08-13 04:08:18.920] [INFO] Worker3(T15): 
+[2025-08-13 04:08:23.944] [INFO] Worker3(T15): here i am
+[2025-08-13 04:08:23.944] [INFO] Worker3(T15): Worker 3 - Processing batch of 2 records
+[2025-08-13 04:08:23.944] [INFO] Worker3(T15): HELP!!!!!
+[2025-08-13 04:08:23.944] [INFO] Worker3(T15): 
+[2025-08-13 04:08:28.966] [INFO] Worker3(T15): here i am
+[2025-08-13 04:08:38.866] [INFO] Worker3(T15): here i am
+[2025-08-13 04:08:38.872] [INFO] Worker3(T15): Worker 3 - Processing batch of 2 records
+[2025-08-13 04:08:38.872] [INFO] Worker3(T15): HELP!!!!!
+[2025-08-13 04:08:38.882] [INFO] Worker3(T15): 
+[2025-08-13 04:08:43.888] [INFO] Worker3(T15): here i am
+[2025-08-13 04:08:43.903] [INFO] Worker3(T15): Worker 3 - Processing batch of 2 records
+[2025-08-13 04:08:43.903] [INFO] Worker3(T15): HELP!!!!!
+[2025-08-13 04:08:43.903] [INFO] Worker3(T15): 
+[2025-08-13 04:08:48.919] [INFO] Worker3(T15): here i am
+[2025-08-13 04:09:05.467] [INFO] Worker3(T15): here i am
+[2025-08-13 04:09:05.485] [INFO] Worker3(T15): Worker 3 - Processing batch of 2 records
+[2025-08-13 04:09:05.486] [INFO] Worker3(T15): HELP!!!!!
+[2025-08-13 04:09:05.487] [INFO] Worker3(T15): 
+[2025-08-13 04:09:15.689] [INFO] Worker3(T15): Worker started
+[2025-08-13 04:09:15.694] [INFO] Worker3(T15): Worker 3 (Thread 15) started - processing records with Uploaded=false
+[2025-08-13 04:09:15.709] [INFO] Worker3(T15): here i am
+[2025-08-13 04:09:15.756] [INFO] Worker3(T15): Fetched batch of 2 records
+[2025-08-13 04:09:15.780] [INFO] Worker3(T15): Worker 3 - Processing batch of 2 records
+[2025-08-13 04:09:15.781] [INFO] Worker3(T15): HELP!!!!!
+[2025-08-13 04:09:15.784] [INFO] Worker3(T15): 
+[2025-08-13 04:09:20.794] [INFO] Worker3(T15): here i am
+[2025-08-13 04:09:20.794] [INFO] Worker3(T15): Fetched batch of 2 records
+[2025-08-13 04:09:20.794] [INFO] Worker3(T15): Worker 3 - Processing batch of 2 records
+[2025-08-13 04:09:20.794] [INFO] Worker3(T15): HELP!!!!!
+[2025-08-13 04:09:20.794] [INFO] Worker3(T15): 
+[2025-08-13 04:09:25.823] [INFO] Worker3(T15): here i am
+[2025-08-13 04:09:25.823] [INFO] Worker3(T15): Fetched batch of 2 records
+[2025-08-13 04:09:25.823] [INFO] Worker3(T15): Worker 3 - Processing batch of 2 records
+[2025-08-13 04:09:25.823] [INFO] Worker3(T15): HELP!!!!!
+[2025-08-13 04:09:25.838] [INFO] Worker3(T15): 
+[2025-08-13 04:09:30.839] [INFO] Worker3(T15): here i am
+[2025-08-13 04:09:30.839] [INFO] Worker3(T15): Fetched batch of 2 records
+[2025-08-13 04:09:30.839] [INFO] Worker3(T15): Worker 3 - Processing batch of 2 records
+[2025-08-13 04:09:30.839] [INFO] Worker3(T15): HELP!!!!!
+[2025-08-13 04:09:30.839] [INFO] Worker3(T15): 
+[2025-08-13 04:09:35.841] [INFO] Worker3(T15): here i am
+[2025-08-13 04:09:35.842] [INFO] Worker3(T15): Fetched batch of 2 records
+[2025-08-13 04:09:35.842] [INFO] Worker3(T15): Worker 3 - Processing batch of 2 records
+[2025-08-13 04:09:35.842] [INFO] Worker3(T15): HELP!!!!!
+[2025-08-13 04:09:35.857] [INFO] Worker3(T15): 
+[2025-08-13 04:09:40.857] [INFO] Worker3(T15): here i am
+[2025-08-13 04:09:40.862] [INFO] Worker3(T15): Fetched batch of 2 records
+[2025-08-13 04:09:40.863] [INFO] Worker3(T15): Worker 3 - Processing batch of 2 records
+[2025-08-13 04:09:40.864] [INFO] Worker3(T15): HELP!!!!!
+[2025-08-13 04:09:40.865] [INFO] Worker3(T15): 
+[2025-08-13 04:09:45.866] [INFO] Worker3(T15): here i am
+[2025-08-13 04:09:45.870] [INFO] Worker3(T15): Fetched batch of 2 records
+[2025-08-13 04:09:45.871] [INFO] Worker3(T15): Worker 3 - Processing batch of 2 records
+[2025-08-13 04:09:45.872] [INFO] Worker3(T15): HELP!!!!!
+[2025-08-13 04:09:45.873] [INFO] Worker3(T15): 
+[2025-08-13 04:09:58.932] [INFO] Worker3(T15): Worker started
+[2025-08-13 04:09:58.934] [INFO] Worker3(T15): Worker 3 (Thread 15) started - processing records with Uploaded=false
+[2025-08-13 04:09:58.937] [INFO] Worker3(T15): here i am
+[2025-08-13 04:09:58.989] [INFO] Worker3(T15): Fetched batch of System.Data.DataRow System.Data.DataRow records
+[2025-08-13 04:09:58.990] [INFO] Worker3(T15): Worker 3 - Processing batch of 2 records
+[2025-08-13 04:09:58.991] [INFO] Worker3(T15): HELP!!!!!
+[2025-08-13 04:09:58.993] [INFO] Worker3(T15): 
+[2025-08-13 04:10:03.995] [INFO] Worker3(T15): here i am
+[2025-08-13 04:10:04.040] [INFO] Worker3(T15): Fetched batch of System.Data.DataRow System.Data.DataRow records
+[2025-08-13 04:10:04.041] [INFO] Worker3(T15): Worker 3 - Processing batch of 2 records
+[2025-08-13 04:10:04.042] [INFO] Worker3(T15): HELP!!!!!
+[2025-08-13 04:10:04.043] [INFO] Worker3(T15): 
+[2025-08-13 04:10:09.057] [INFO] Worker3(T15): here i am
+[2025-08-13 04:10:09.072] [INFO] Worker3(T15): Fetched batch of System.Data.DataRow System.Data.DataRow records
+[2025-08-13 04:10:09.072] [INFO] Worker3(T15): Worker 3 - Processing batch of 2 records
+[2025-08-13 04:10:09.072] [INFO] Worker3(T15): HELP!!!!!
+[2025-08-13 04:10:09.072] [INFO] Worker3(T15): 
+[2025-08-13 04:10:14.072] [INFO] Worker3(T15): here i am
+[2025-08-13 04:10:14.082] [INFO] Worker3(T15): Fetched batch of System.Data.DataRow System.Data.DataRow records
+[2025-08-13 04:10:14.083] [INFO] Worker3(T15): Worker 3 - Processing batch of 2 records
+[2025-08-13 04:10:14.084] [INFO] Worker3(T15): HELP!!!!!
+[2025-08-13 04:10:14.139] [INFO] Worker3(T15): 
+[2025-08-13 04:10:19.140] [INFO] Worker3(T15): here i am
+[2025-08-13 04:10:19.155] [INFO] Worker3(T15): Fetched batch of System.Data.DataRow System.Data.DataRow records
+[2025-08-13 04:10:19.156] [INFO] Worker3(T15): Worker 3 - Processing batch of 2 records
+[2025-08-13 04:10:19.156] [INFO] Worker3(T15): HELP!!!!!
+[2025-08-13 04:10:19.157] [INFO] Worker3(T15): 
+[2025-08-13 04:10:24.160] [INFO] Worker3(T15): here i am
+[2025-08-13 04:10:24.173] [INFO] Worker3(T15): Fetched batch of System.Data.DataRow System.Data.DataRow records
+[2025-08-13 04:10:24.175] [INFO] Worker3(T15): Worker 3 - Processing batch of 2 records
+[2025-08-13 04:10:24.176] [INFO] Worker3(T15): HELP!!!!!
+[2025-08-13 04:10:24.177] [INFO] Worker3(T15): 
+[2025-08-13 04:10:29.186] [INFO] Worker3(T15): here i am
+[2025-08-13 04:10:29.202] [INFO] Worker3(T15): Fetched batch of System.Data.DataRow System.Data.DataRow records
+[2025-08-13 04:10:29.203] [INFO] Worker3(T15): Worker 3 - Processing batch of 2 records
+[2025-08-13 04:10:29.204] [INFO] Worker3(T15): HELP!!!!!
+[2025-08-13 04:10:29.205] [INFO] Worker3(T15): 
+[2025-08-13 04:10:34.206] [INFO] Worker3(T15): here i am
+[2025-08-13 04:10:34.220] [INFO] Worker3(T15): Fetched batch of System.Data.DataRow System.Data.DataRow records
+[2025-08-13 04:10:34.221] [INFO] Worker3(T15): Worker 3 - Processing batch of 2 records
+[2025-08-13 04:10:34.223] [INFO] Worker3(T15): HELP!!!!!
+[2025-08-13 04:10:34.223] [INFO] Worker3(T15): 
+[2025-08-13 04:10:39.224] [INFO] Worker3(T15): here i am
+[2025-08-13 04:10:39.230] [INFO] Worker3(T15): Fetched batch of System.Data.DataRow System.Data.DataRow records
+[2025-08-13 04:10:39.231] [INFO] Worker3(T15): Worker 3 - Processing batch of 2 records
+[2025-08-13 04:10:39.232] [INFO] Worker3(T15): HELP!!!!!
+[2025-08-13 04:10:39.233] [INFO] Worker3(T15): 

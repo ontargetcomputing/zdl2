@@ -1,0 +1,116 @@
+﻿[2025-08-13 04:07:58.878] [INFO] Worker4(T16): Worker started
+[2025-08-13 04:07:58.880] [INFO] Worker4(T16): Worker 4 (Thread 16) started - processing records with Uploaded=false
+[2025-08-13 04:07:58.882] [INFO] Worker4(T16): here i am
+[2025-08-13 04:07:58.902] [INFO] Worker4(T16): Worker 4 - Processing batch of 2 records
+[2025-08-13 04:07:58.903] [INFO] Worker4(T16): HELP!!!!!
+[2025-08-13 04:07:58.904] [INFO] Worker4(T16): 
+[2025-08-13 04:08:03.908] [INFO] Worker4(T16): here i am
+[2025-08-13 04:08:03.922] [INFO] Worker4(T16): Worker 4 - Processing batch of 2 records
+[2025-08-13 04:08:03.923] [INFO] Worker4(T16): HELP!!!!!
+[2025-08-13 04:08:03.924] [INFO] Worker4(T16): 
+[2025-08-13 04:08:08.977] [INFO] Worker4(T16): here i am
+[2025-08-13 04:08:08.982] [INFO] Worker4(T16): Worker 4 - Processing batch of 2 records
+[2025-08-13 04:08:08.983] [INFO] Worker4(T16): HELP!!!!!
+[2025-08-13 04:08:08.984] [INFO] Worker4(T16): 
+[2025-08-13 04:08:13.987] [INFO] Worker4(T16): here i am
+[2025-08-13 04:08:13.992] [INFO] Worker4(T16): Worker 4 - Processing batch of 2 records
+[2025-08-13 04:08:13.993] [INFO] Worker4(T16): HELP!!!!!
+[2025-08-13 04:08:13.994] [INFO] Worker4(T16): 
+[2025-08-13 04:08:18.999] [INFO] Worker4(T16): here i am
+[2025-08-13 04:08:19.015] [INFO] Worker4(T16): Worker 4 - Processing batch of 2 records
+[2025-08-13 04:08:19.015] [INFO] Worker4(T16): HELP!!!!!
+[2025-08-13 04:08:19.015] [INFO] Worker4(T16): 
+[2025-08-13 04:08:24.023] [INFO] Worker4(T16): here i am
+[2025-08-13 04:08:24.028] [INFO] Worker4(T16): Worker 4 - Processing batch of 2 records
+[2025-08-13 04:08:24.028] [INFO] Worker4(T16): HELP!!!!!
+[2025-08-13 04:08:24.028] [INFO] Worker4(T16): 
+[2025-08-13 04:08:29.033] [INFO] Worker4(T16): here i am
+[2025-08-13 04:08:38.866] [INFO] Worker4(T16): here i am
+[2025-08-13 04:08:38.872] [INFO] Worker4(T16): Worker 4 - Processing batch of 2 records
+[2025-08-13 04:08:38.872] [INFO] Worker4(T16): HELP!!!!!
+[2025-08-13 04:08:38.872] [INFO] Worker4(T16): 
+[2025-08-13 04:08:43.888] [INFO] Worker4(T16): here i am
+[2025-08-13 04:08:43.903] [INFO] Worker4(T16): Worker 4 - Processing batch of 2 records
+[2025-08-13 04:08:43.903] [INFO] Worker4(T16): HELP!!!!!
+[2025-08-13 04:08:43.903] [INFO] Worker4(T16): 
+[2025-08-13 04:08:48.919] [INFO] Worker4(T16): here i am
+[2025-08-13 04:08:57.983] [INFO] Worker4(T16): here i am
+[2025-08-13 04:09:07.359] [INFO] Worker4(T16): here i am
+[2025-08-13 04:09:07.374] [INFO] Worker4(T16): Worker 4 - Processing batch of 2 records
+[2025-08-13 04:09:07.375] [INFO] Worker4(T16): HELP!!!!!
+[2025-08-13 04:09:07.375] [INFO] Worker4(T16): 
+[2025-08-13 04:09:15.715] [INFO] Worker4(T16): Worker started
+[2025-08-13 04:09:15.720] [INFO] Worker4(T16): Worker 4 (Thread 16) started - processing records with Uploaded=false
+[2025-08-13 04:09:15.722] [INFO] Worker4(T16): here i am
+[2025-08-13 04:09:15.770] [INFO] Worker4(T16): Fetched batch of 2 records
+[2025-08-13 04:09:15.772] [INFO] Worker4(T16): Worker 4 - Processing batch of 2 records
+[2025-08-13 04:09:15.773] [INFO] Worker4(T16): HELP!!!!!
+[2025-08-13 04:09:15.774] [INFO] Worker4(T16): 
+[2025-08-13 04:09:20.779] [INFO] Worker4(T16): here i am
+[2025-08-13 04:09:20.794] [INFO] Worker4(T16): Fetched batch of 2 records
+[2025-08-13 04:09:20.794] [INFO] Worker4(T16): Worker 4 - Processing batch of 2 records
+[2025-08-13 04:09:20.794] [INFO] Worker4(T16): HELP!!!!!
+[2025-08-13 04:09:20.794] [INFO] Worker4(T16): 
+[2025-08-13 04:09:25.823] [INFO] Worker4(T16): here i am
+[2025-08-13 04:09:25.823] [INFO] Worker4(T16): Fetched batch of 2 records
+[2025-08-13 04:09:25.823] [INFO] Worker4(T16): Worker 4 - Processing batch of 2 records
+[2025-08-13 04:09:25.823] [INFO] Worker4(T16): HELP!!!!!
+[2025-08-13 04:09:25.823] [INFO] Worker4(T16): 
+[2025-08-13 04:09:30.839] [INFO] Worker4(T16): here i am
+[2025-08-13 04:09:32.662] [INFO] Worker4(T16): Fetched batch of 2 records
+[2025-08-13 04:09:32.662] [INFO] Worker4(T16): Worker 4 - Processing batch of 2 records
+[2025-08-13 04:09:32.662] [INFO] Worker4(T16): HELP!!!!!
+[2025-08-13 04:09:32.662] [INFO] Worker4(T16): 
+[2025-08-13 04:09:37.675] [INFO] Worker4(T16): here i am
+[2025-08-13 04:09:37.706] [INFO] Worker4(T16): Fetched batch of 2 records
+[2025-08-13 04:09:37.707] [INFO] Worker4(T16): Worker 4 - Processing batch of 2 records
+[2025-08-13 04:09:37.708] [INFO] Worker4(T16): HELP!!!!!
+[2025-08-13 04:09:37.709] [INFO] Worker4(T16): 
+[2025-08-13 04:09:42.716] [INFO] Worker4(T16): here i am
+[2025-08-13 04:09:42.724] [INFO] Worker4(T16): Fetched batch of 2 records
+[2025-08-13 04:09:42.724] [INFO] Worker4(T16): Worker 4 - Processing batch of 2 records
+[2025-08-13 04:09:42.724] [INFO] Worker4(T16): HELP!!!!!
+[2025-08-13 04:09:42.724] [INFO] Worker4(T16): 
+[2025-08-13 04:09:47.725] [INFO] Worker4(T16): here i am
+[2025-08-13 04:09:47.745] [INFO] Worker4(T16): Fetched batch of 2 records
+[2025-08-13 04:09:47.746] [INFO] Worker4(T16): Worker 4 - Processing batch of 2 records
+[2025-08-13 04:09:47.747] [INFO] Worker4(T16): HELP!!!!!
+[2025-08-13 04:09:47.749] [INFO] Worker4(T16): 
+[2025-08-13 04:09:58.971] [INFO] Worker4(T16): Worker started
+[2025-08-13 04:09:58.973] [INFO] Worker4(T16): Worker 4 (Thread 16) started - processing records with Uploaded=false
+[2025-08-13 04:09:58.976] [INFO] Worker4(T16): here i am
+[2025-08-13 04:09:58.989] [INFO] Worker4(T16): Fetched batch of System.Data.DataRow System.Data.DataRow records
+[2025-08-13 04:09:58.990] [INFO] Worker4(T16): Worker 4 - Processing batch of 2 records
+[2025-08-13 04:09:58.991] [INFO] Worker4(T16): HELP!!!!!
+[2025-08-13 04:09:58.992] [INFO] Worker4(T16): 
+[2025-08-13 04:10:03.995] [INFO] Worker4(T16): here i am
+[2025-08-13 04:10:10.230] [INFO] Worker4(T16): here i am
+[2025-08-13 04:10:10.235] [INFO] Worker4(T16): Fetched batch of System.Data.DataRow System.Data.DataRow records
+[2025-08-13 04:10:10.237] [INFO] Worker4(T16): Worker 4 - Processing batch of 2 records
+[2025-08-13 04:10:10.238] [INFO] Worker4(T16): HELP!!!!!
+[2025-08-13 04:10:10.239] [INFO] Worker4(T16): 
+[2025-08-13 04:10:15.250] [INFO] Worker4(T16): here i am
+[2025-08-13 04:10:15.250] [INFO] Worker4(T16): Fetched batch of System.Data.DataRow System.Data.DataRow records
+[2025-08-13 04:10:15.250] [INFO] Worker4(T16): Worker 4 - Processing batch of 2 records
+[2025-08-13 04:10:15.250] [INFO] Worker4(T16): HELP!!!!!
+[2025-08-13 04:10:15.266] [INFO] Worker4(T16): 
+[2025-08-13 04:10:20.266] [INFO] Worker4(T16): here i am
+[2025-08-13 04:10:20.277] [INFO] Worker4(T16): Fetched batch of System.Data.DataRow System.Data.DataRow records
+[2025-08-13 04:10:20.279] [INFO] Worker4(T16): Worker 4 - Processing batch of 2 records
+[2025-08-13 04:10:20.280] [INFO] Worker4(T16): HELP!!!!!
+[2025-08-13 04:10:20.281] [INFO] Worker4(T16): 
+[2025-08-13 04:10:25.297] [INFO] Worker4(T16): here i am
+[2025-08-13 04:10:25.313] [INFO] Worker4(T16): Fetched batch of System.Data.DataRow System.Data.DataRow records
+[2025-08-13 04:10:25.313] [INFO] Worker4(T16): Worker 4 - Processing batch of 2 records
+[2025-08-13 04:10:25.313] [INFO] Worker4(T16): HELP!!!!!
+[2025-08-13 04:10:25.313] [INFO] Worker4(T16): 
+[2025-08-13 04:10:30.328] [INFO] Worker4(T16): here i am
+[2025-08-13 04:10:30.343] [INFO] Worker4(T16): Fetched batch of System.Data.DataRow System.Data.DataRow records
+[2025-08-13 04:10:30.344] [INFO] Worker4(T16): Worker 4 - Processing batch of 2 records
+[2025-08-13 04:10:30.347] [INFO] Worker4(T16): HELP!!!!!
+[2025-08-13 04:10:30.350] [INFO] Worker4(T16): 
+[2025-08-13 04:10:35.352] [INFO] Worker4(T16): here i am
+[2025-08-13 04:10:35.392] [INFO] Worker4(T16): Fetched batch of System.Data.DataRow System.Data.DataRow records
+[2025-08-13 04:10:35.393] [INFO] Worker4(T16): Worker 4 - Processing batch of 2 records
+[2025-08-13 04:10:35.394] [INFO] Worker4(T16): HELP!!!!!
+[2025-08-13 04:10:35.395] [INFO] Worker4(T16): 

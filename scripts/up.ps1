@@ -3,54 +3,54 @@ param(
     [string]$ConnectionString = "Server=palomar.cj4cxnl2rpyc.us-west-2.rds.amazonaws.com,1433;Database=zda;User ID=zdauser;Password=YouAre#1;TrustServerCertificate=true",
     [string]$TableName = "recordings.ZoomRecordings",
     [string]$IdColumn = "GUID",  # Assuming you have an ID column
-    [int]$BatchSize = 1000,
+    [int]$BatchSize = 2,
     [int]$MaxThreads = 8
 )
 
 # Function to get next batch of unprocessed records
-function Get-NextBatchToUpload {
-    param(
-        [string]$connString,
-        [int]$batchSize,
-        [string]$tableName,
-        [string]$idCol
-    )
+# function Get-NextBatchToUpload {
+#     param(
+#         [string]$connString,
+#         [int]$batchSize,
+#         [string]$tableName,
+#         [string]$idCol
+#     )
+#     Write-Output "Getting next batch of up to $batchSize records from $tableName where Uploaded = 0"
+#     $connection = New-Object System.Data.SqlClient.SqlConnection($connString)
     
-    $connection = New-Object System.Data.SqlClient.SqlConnection($connString)
-    
-    try {
-        $connection.Open()
+#     try {
+#         $connection.Open()
         
-        # Atomically claim a batch of records that haven't been uploaded
-        $query = @"
-WITH NextBatch AS (
-    SELECT TOP ($batchSize) $idCol
-    FROM $tableName WITH (READPAST)
-    WHERE Uploaded = 0
-    ORDER BY $idCol
-)
-UPDATE $tableName 
-SET ProcessingStarted = GETDATE(),
-    ProcessingThread = @ThreadId
-OUTPUT INSERTED.*
-FROM $tableName t
-INNER JOIN NextBatch nb ON t.$idCol = nb.$idCol
-WHERE t.Uploaded = 0  -- Double-check it hasn't been processed
-"@
+#         # Atomically claim a batch of records that haven't been uploaded
+#         $query = @"
+# WITH NextBatch AS (
+#     SELECT TOP ($batchSize) $idCol
+#     FROM $tableName WITH (READPAST)
+#     WHERE Uploaded = 0
+#     ORDER BY $idCol
+# )
+# UPDATE $tableName 
+# SET ProcessingStarted = GETDATE(),
+#     ProcessingThread = @ThreadId
+# OUTPUT INSERTED.*
+# FROM $tableName t
+# INNER JOIN NextBatch nb ON t.$idCol = nb.$idCol
+# WHERE t.Uploaded = 0  -- Double-check it hasn't been processed
+# "@
         
-        $command = New-Object System.Data.SqlClient.SqlCommand($query, $connection)
-        $command.Parameters.AddWithValue("@ThreadId", [System.Threading.Thread]::CurrentThread.ManagedThreadId)
+#         $command = New-Object System.Data.SqlClient.SqlCommand($query, $connection)
+#         $command.Parameters.AddWithValue("@ThreadId", [System.Threading.Thread]::CurrentThread.ManagedThreadId)
         
-        $adapter = New-Object System.Data.SqlClient.SqlDataAdapter($command)
-        $dataTable = New-Object System.Data.DataTable
-        $adapter.Fill($dataTable)
+#         $adapter = New-Object System.Data.SqlClient.SqlDataAdapter($command)
+#         $dataTable = New-Object System.Data.DataTable
+#         $adapter.Fill($dataTable)
         
-        return $dataTable
+#         return $dataTable
         
-    } finally {
-        $connection.Close()
-    }
-}
+#     } finally {
+#         $connection.Close()
+#     }
+# }
 
 # Function to mark records as uploaded (or failed)
 function Set-UploadedStatus {
@@ -98,10 +98,30 @@ WHERE $idCol IN ($idList)
 $workerScript = {
     param($connectionString, $batchSize, $tableName, $idCol, $workerNumber)
     
+    # Create log file for this worker
+    $logFile = "worker_$workerNumber.log"
+    $threadId = [System.Threading.Thread]::CurrentThread.ManagedThreadId
+    
+        # Simple logging function
+    function Write-Log {
+        param([string]$message, [string]$level = "INFO")
+        
+        $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss.fff"
+        $logLine = "[$timestamp] [$level] Worker$workerNumber(T$threadId): $message"
+        
+        # Write to file (thread-safe with Out-File -Append)
+        $logLine | Out-File -FilePath $logFile -Append -Encoding UTF8
+        
+        # Also send to console output
+        Write-Output $logLine
+    }
+    
+    Write-Log "Worker started"
+    
     # Load database functions in the runspace
     function Get-NextBatchToUpload {
         param($connString, $batchSize, $tableName, $idCol)
-        
+        Write-Log "here i am"
         $connection = New-Object System.Data.SqlClient.SqlConnection($connString)
         try {
             $connection.Open()
@@ -128,7 +148,7 @@ WHERE t.Uploaded = 0
             $adapter = New-Object System.Data.SqlClient.SqlDataAdapter($command)
             $dataTable = New-Object System.Data.DataTable
             $adapter.Fill($dataTable)
-            
+            Write-Log "Fetched batch of $($dataTable) records"
             return $dataTable
         } finally {
             $connection.Close()
@@ -174,7 +194,7 @@ WHERE $idCol IN ($idList)
     $totalFailed = 0
     $workerStartTime = Get-Date
     
-    Write-Output "Worker $workerNumber (Thread $threadId) started - processing records with Uploaded=false"
+    Write-Log  "Worker $workerNumber (Thread $threadId) started - processing records with Uploaded=false"
     
     while ($true) {
         try {
@@ -182,23 +202,26 @@ WHERE $idCol IN ($idList)
             $batch = Get-NextBatchToUpload -connString $connectionString -batchSize $batchSize -tableName $tableName -idCol $idCol
             
             if ($batch.Rows.Count -eq 0) {
-                Write-Output "Worker $workerNumber - No more unuploaded records to process"
+                Write-Log  "Worker $workerNumber - No more unuploaded records to process"
                 break
             }
             
-            Write-Output "Worker $workerNumber - Processing batch of $($batch.Rows.Count) records"
+            Write-Log  "Worker $workerNumber - Processing batch of $($batch.Rows.Count) records"
             
             $uploadedIds = @()
             $failedIds = @()
             
             # Process each record in the batch
+            Write-Log "HELP!!!!!"
             foreach ($row in $batch.Rows) {
+                Write-Log $row
                 try {
                     $recordId = $row[$idCol]
-                    
+                    Write-Log "Worker $workerNumber - Processing record $recordId"
+                    #RDB
                     # *** YOUR UPLOAD/PROCESSING LOGIC HERE ***
                     # Example processing - replace with your actual logic:
-                    
+                    Write-Log  "Worker $workerNumber - Processing record $recordId"
                     # Get data from the record
                     # $data = $row["DataColumn"]
                     # $filename = $row["FileName"]
@@ -226,7 +249,7 @@ WHERE $idCol IN ($idList)
                     $totalProcessed++
                     
                 } catch {
-                    Write-Output "Worker $workerNumber - Failed to process record $($row[$idCol]): $($_.Exception.Message)"
+                    write-Log "Worker $workerNumber - Failed to process record $($row[$idCol]): $($_.Exception.Message)"
                     $failedIds += $row[$idCol]
                     $totalFailed++
                 }
@@ -266,7 +289,7 @@ WHERE $idCol IN ($idList)
 # Function to get count of remaining records
 function Get-RemainingCount {
     param([string]$connString, [string]$tableName)
-    Write-Host "Connection String: $connString" -ForegroundColor Yellow
+    
     $connection = New-Object System.Data.SqlClient.SqlConnection($connString)
     try {
         $connection.Open()
@@ -354,7 +377,7 @@ function Start-UploadProcessing {
         }
         
         # Show progress every 30 seconds
-        if (((Get-Date) - $lastProgressTime).TotalSeconds -gt 30) {
+        if (((Get-Date) - $lastProgressTime).TotalSeconds -gt 10) {
             $currentRemaining = Get-RemainingCount -connString $ConnectionString -tableName $TableName
             $processed = $initialCount - $currentRemaining
             $rate = if ($processed -gt 0) { [math]::Round($processed / ((Get-Date) - $startTime).TotalSeconds, 2) } else { 0 }

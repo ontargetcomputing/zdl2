@@ -1,0 +1,105 @@
+﻿[2025-08-13 04:07:58.953] [INFO] Worker7(T19): Worker started
+[2025-08-13 04:07:58.954] [INFO] Worker7(T19): Worker 7 (Thread 19) started - processing records with Uploaded=false
+[2025-08-13 04:07:58.957] [INFO] Worker7(T19): here i am
+[2025-08-13 04:07:58.973] [INFO] Worker7(T19): Worker 7 - Processing batch of 2 records
+[2025-08-13 04:07:58.974] [INFO] Worker7(T19): HELP!!!!!
+[2025-08-13 04:07:58.976] [INFO] Worker7(T19): 
+[2025-08-13 04:08:03.980] [INFO] Worker7(T19): here i am
+[2025-08-13 04:08:03.997] [INFO] Worker7(T19): Worker 7 - Processing batch of 2 records
+[2025-08-13 04:08:03.998] [INFO] Worker7(T19): HELP!!!!!
+[2025-08-13 04:08:04.000] [INFO] Worker7(T19): 
+[2025-08-13 04:08:09.003] [INFO] Worker7(T19): here i am
+[2025-08-13 04:08:09.012] [INFO] Worker7(T19): Worker 7 - Processing batch of 2 records
+[2025-08-13 04:08:09.015] [INFO] Worker7(T19): HELP!!!!!
+[2025-08-13 04:08:09.016] [INFO] Worker7(T19): 
+[2025-08-13 04:08:14.018] [INFO] Worker7(T19): here i am
+[2025-08-13 04:08:14.027] [INFO] Worker7(T19): Worker 7 - Processing batch of 2 records
+[2025-08-13 04:08:14.029] [INFO] Worker7(T19): HELP!!!!!
+[2025-08-13 04:08:14.030] [INFO] Worker7(T19): 
+[2025-08-13 04:08:19.046] [INFO] Worker7(T19): here i am
+[2025-08-13 04:08:19.056] [INFO] Worker7(T19): Worker 7 - Processing batch of 2 records
+[2025-08-13 04:08:19.057] [INFO] Worker7(T19): HELP!!!!!
+[2025-08-13 04:08:19.058] [INFO] Worker7(T19): 
+[2025-08-13 04:08:24.071] [INFO] Worker7(T19): here i am
+[2025-08-13 04:08:35.108] [INFO] Worker7(T19): Worker 7 - Processing batch of 2 records
+[2025-08-13 04:08:35.108] [INFO] Worker7(T19): HELP!!!!!
+[2025-08-13 04:08:35.108] [INFO] Worker7(T19): 
+[2025-08-13 04:08:40.108] [INFO] Worker7(T19): here i am
+[2025-08-13 04:08:45.497] [INFO] Worker7(T19): here i am
+[2025-08-13 04:08:45.503] [INFO] Worker7(T19): Worker 7 - Processing batch of 2 records
+[2025-08-13 04:08:45.503] [INFO] Worker7(T19): HELP!!!!!
+[2025-08-13 04:08:45.503] [INFO] Worker7(T19): 
+[2025-08-13 04:08:50.515] [INFO] Worker7(T19): here i am
+[2025-08-13 04:09:00.467] [INFO] Worker7(T19): Worker 7 - Processing batch of 2 records
+[2025-08-13 04:09:00.467] [INFO] Worker7(T19): HELP!!!!!
+[2025-08-13 04:09:00.467] [INFO] Worker7(T19): 
+[2025-08-13 04:09:05.467] [INFO] Worker7(T19): here i am
+[2025-08-13 04:09:05.485] [INFO] Worker7(T19): Worker 7 - Processing batch of 2 records
+[2025-08-13 04:09:05.486] [INFO] Worker7(T19): HELP!!!!!
+[2025-08-13 04:09:05.487] [INFO] Worker7(T19): 
+[2025-08-13 04:09:15.810] [INFO] Worker7(T19): Worker started
+[2025-08-13 04:09:15.814] [INFO] Worker7(T19): Worker 7 (Thread 19) started - processing records with Uploaded=false
+[2025-08-13 04:09:15.817] [INFO] Worker7(T19): here i am
+[2025-08-13 04:09:15.823] [INFO] Worker7(T19): Fetched batch of 2 records
+[2025-08-13 04:09:15.824] [INFO] Worker7(T19): Worker 7 - Processing batch of 2 records
+[2025-08-13 04:09:15.825] [INFO] Worker7(T19): HELP!!!!!
+[2025-08-13 04:09:15.826] [INFO] Worker7(T19): 
+[2025-08-13 04:09:20.841] [INFO] Worker7(T19): here i am
+[2025-08-13 04:09:20.841] [INFO] Worker7(T19): Fetched batch of 2 records
+[2025-08-13 04:09:20.841] [INFO] Worker7(T19): Worker 7 - Processing batch of 2 records
+[2025-08-13 04:09:20.841] [INFO] Worker7(T19): HELP!!!!!
+[2025-08-13 04:09:20.841] [INFO] Worker7(T19): 
+[2025-08-13 04:09:25.854] [INFO] Worker7(T19): here i am
+[2025-08-13 04:09:25.854] [INFO] Worker7(T19): Fetched batch of 2 records
+[2025-08-13 04:09:25.854] [INFO] Worker7(T19): Worker 7 - Processing batch of 2 records
+[2025-08-13 04:09:25.854] [INFO] Worker7(T19): HELP!!!!!
+[2025-08-13 04:09:25.854] [INFO] Worker7(T19): 
+[2025-08-13 04:09:30.855] [INFO] Worker7(T19): here i am
+[2025-08-13 04:09:30.855] [INFO] Worker7(T19): Fetched batch of 2 records
+[2025-08-13 04:09:30.855] [INFO] Worker7(T19): Worker 7 - Processing batch of 2 records
+[2025-08-13 04:09:30.855] [INFO] Worker7(T19): HELP!!!!!
+[2025-08-13 04:09:30.855] [INFO] Worker7(T19): 
+[2025-08-13 04:09:35.857] [INFO] Worker7(T19): here i am
+[2025-08-13 04:09:35.873] [INFO] Worker7(T19): Fetched batch of 2 records
+[2025-08-13 04:09:35.873] [INFO] Worker7(T19): Worker 7 - Processing batch of 2 records
+[2025-08-13 04:09:35.873] [INFO] Worker7(T19): HELP!!!!!
+[2025-08-13 04:09:35.873] [INFO] Worker7(T19): 
+[2025-08-13 04:09:40.873] [INFO] Worker7(T19): here i am
+[2025-08-13 04:09:40.877] [INFO] Worker7(T19): Fetched batch of 2 records
+[2025-08-13 04:09:40.879] [INFO] Worker7(T19): Worker 7 - Processing batch of 2 records
+[2025-08-13 04:09:40.879] [INFO] Worker7(T19): HELP!!!!!
+[2025-08-13 04:09:40.880] [INFO] Worker7(T19): 
+[2025-08-13 04:09:45.889] [INFO] Worker7(T19): here i am
+[2025-08-13 04:09:45.889] [INFO] Worker7(T19): Fetched batch of 2 records
+[2025-08-13 04:09:45.889] [INFO] Worker7(T19): Worker 7 - Processing batch of 2 records
+[2025-08-13 04:09:45.889] [INFO] Worker7(T19): HELP!!!!!
+[2025-08-13 04:09:45.889] [INFO] Worker7(T19): 
+[2025-08-13 04:09:59.120] [INFO] Worker7(T19): Worker started
+[2025-08-13 04:09:59.121] [INFO] Worker7(T19): Worker 7 (Thread 19) started - processing records with Uploaded=false
+[2025-08-13 04:09:59.127] [INFO] Worker7(T19): here i am
+[2025-08-13 04:09:59.142] [INFO] Worker7(T19): Fetched batch of System.Data.DataRow System.Data.DataRow records
+[2025-08-13 04:09:59.143] [INFO] Worker7(T19): Worker 7 - Processing batch of 2 records
+[2025-08-13 04:09:59.144] [INFO] Worker7(T19): HELP!!!!!
+[2025-08-13 04:09:59.145] [INFO] Worker7(T19): 
+[2025-08-13 04:10:04.148] [INFO] Worker7(T19): here i am
+[2025-08-13 04:10:15.218] [INFO] Worker7(T19): here i am
+[2025-08-13 04:10:15.250] [INFO] Worker7(T19): Fetched batch of System.Data.DataRow System.Data.DataRow records
+[2025-08-13 04:10:15.250] [INFO] Worker7(T19): Worker 7 - Processing batch of 2 records
+[2025-08-13 04:10:15.250] [INFO] Worker7(T19): HELP!!!!!
+[2025-08-13 04:10:15.250] [INFO] Worker7(T19): 
+[2025-08-13 04:10:20.253] [INFO] Worker7(T19): here i am
+[2025-08-13 04:10:20.276] [INFO] Worker7(T19): Fetched batch of System.Data.DataRow System.Data.DataRow records
+[2025-08-13 04:10:20.278] [INFO] Worker7(T19): Worker 7 - Processing batch of 2 records
+[2025-08-13 04:10:20.280] [INFO] Worker7(T19): HELP!!!!!
+[2025-08-13 04:10:20.281] [INFO] Worker7(T19): 
+[2025-08-13 04:10:25.310] [INFO] Worker7(T19): here i am
+[2025-08-13 04:10:25.313] [INFO] Worker7(T19): Fetched batch of System.Data.DataRow System.Data.DataRow records
+[2025-08-13 04:10:25.313] [INFO] Worker7(T19): Worker 7 - Processing batch of 2 records
+[2025-08-13 04:10:25.313] [INFO] Worker7(T19): HELP!!!!!
+[2025-08-13 04:10:25.313] [INFO] Worker7(T19): 
+[2025-08-13 04:10:30.328] [INFO] Worker7(T19): here i am
+[2025-08-13 04:10:30.340] [INFO] Worker7(T19): Fetched batch of System.Data.DataRow System.Data.DataRow records
+[2025-08-13 04:10:30.342] [INFO] Worker7(T19): Worker 7 - Processing batch of 2 records
+[2025-08-13 04:10:30.344] [INFO] Worker7(T19): HELP!!!!!
+[2025-08-13 04:10:30.346] [INFO] Worker7(T19): 
+[2025-08-13 04:10:35.351] [INFO] Worker7(T19): here i am
