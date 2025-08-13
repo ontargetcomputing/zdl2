@@ -4,7 +4,7 @@ param(
     [string]$TableName = "recordings.ZoomRecordings",
     [string]$IdColumn = "GUID",  # Assuming you have an ID column
     [int]$BatchSize = 2,
-    [int]$MaxThreads = 8
+    [int]$MaxThreads = 1
 )
 
 # Function to get next batch of unprocessed records
@@ -53,46 +53,46 @@ param(
 # }
 
 # Function to mark records as uploaded (or failed)
-function Set-UploadedStatus {
-    param(
-        [string]$connString,
-        [array]$recordIds,
-        [bool]$uploaded,
-        [string]$tableName,
-        [string]$idCol,
-        [string]$errorMessage = $null
-    )
+# function Set-UploadedStatus {
+#     param(
+#         [string]$connString,
+#         [array]$recordIds,
+#         [bool]$uploaded,
+#         [string]$tableName,
+#         [string]$idCol,
+#         [string]$errorMessage = $null
+#     )
     
-    if ($recordIds.Count -eq 0) { return }
+#     if ($recordIds.Count -eq 0) { return }
     
-    $connection = New-Object System.Data.SqlClient.SqlConnection($connString)
+#     $connection = New-Object System.Data.SqlClient.SqlConnection($connString)
     
-    try {
-        $connection.Open()
+#     try {
+#         $connection.Open()
         
-        $idList = ($recordIds -join ',')
-        $query = @"
-UPDATE $tableName 
-SET Uploaded = @Uploaded,
-    ProcessingCompleted = GETDATE(),
-    ErrorMessage = @ErrorMessage
-WHERE $idCol IN ($idList)
-"@
+#         $idList = ($recordIds -join ',')
+#         $query = @"
+# UPDATE $tableName 
+# SET Uploaded = @Uploaded,
+#     ProcessingCompleted = GETDATE(),
+#     ErrorMessage = @ErrorMessage
+# WHERE $idCol IN ($idList)
+# "@
         
-        $command = New-Object System.Data.SqlClient.SqlCommand($query, $connection)
-        $command.Parameters.AddWithValue("@Uploaded", $uploaded)
-        $command.Parameters.AddWithValue("@ErrorMessage", [System.DBNull]::Value)
+#         $command = New-Object System.Data.SqlClient.SqlCommand($query, $connection)
+#         $command.Parameters.AddWithValue("@Uploaded", $uploaded)
+#         $command.Parameters.AddWithValue("@ErrorMessage", [System.DBNull]::Value)
         
-        if ($errorMessage) {
-            $command.Parameters["@ErrorMessage"].Value = $errorMessage
-        }
+#         if ($errorMessage) {
+#             $command.Parameters["@ErrorMessage"].Value = $errorMessage
+#         }
         
-        $command.ExecuteNonQuery()
+#         $command.ExecuteNonQuery()
         
-    } finally {
-        $connection.Close()
-    }
-}
+#     } finally {
+#         $connection.Close()
+#     }
+# }
 
 # Worker script that processes batches
 $workerScript = {
@@ -111,35 +111,28 @@ $workerScript = {
         
         # Write to file (thread-safe with Out-File -Append)
         $logLine | Out-File -FilePath $logFile -Append -Encoding UTF8
-        
-        # Also send to console output
-        Write-Output $logLine
     }
-    
-    Write-Log "Worker started"
     
     # Load database functions in the runspace
     function Get-NextBatchToUpload {
         param($connString, $batchSize, $tableName, $idCol)
-        Write-Log "here i am"
         $connection = New-Object System.Data.SqlClient.SqlConnection($connString)
         try {
             $connection.Open()
-            
+
             $query = @"
 WITH NextBatch AS (
     SELECT TOP ($batchSize) $idCol
     FROM $tableName WITH (READPAST)
-    WHERE Uploaded = 0
+    where UPLOADED = 0 and UPLOAD_STARTED is NULL
     ORDER BY $idCol
 )
 UPDATE $tableName 
-SET ProcessingStarted = GETDATE(),
-    ProcessingThread = @ThreadId
+SET UPLOAD_STARTED = GETDATE(),
+    UPLOAD_THREAD = @ThreadId
 OUTPUT INSERTED.*
 FROM $tableName t
 INNER JOIN NextBatch nb ON t.$idCol = nb.$idCol
-WHERE t.Uploaded = 0
 "@
             
             $command = New-Object System.Data.SqlClient.SqlCommand($query, $connection)
@@ -148,8 +141,19 @@ WHERE t.Uploaded = 0
             $adapter = New-Object System.Data.SqlClient.SqlDataAdapter($command)
             $dataTable = New-Object System.Data.DataTable
             $adapter.Fill($dataTable)
-            Write-Log "Fetched batch of $($dataTable) records"
-            return $dataTable
+
+            $rows = @()
+            foreach ($row in $dataTable.Rows) {
+                $rowData = @{}
+                foreach ($col in $dataTable.Columns) {
+                    $rowData[$col.ColumnName] = $row[$col]
+                }
+                $rows += $rowData
+            }
+
+            Write-Log "Fetched $($rows.Count) records for upload"
+           
+            return $rows
         } finally {
             $connection.Close()
         }
@@ -157,19 +161,21 @@ WHERE t.Uploaded = 0
     
     function Set-UploadedStatus {
         param($connString, $recordIds, $uploaded, $tableName, $idCol, $errorMessage = $null)
-        
+
+        Write-Log "Setting Uploaded=$uploaded for records: $($recordIds -join ',')"
         if ($recordIds.Count -eq 0) { return }
         
         $connection = New-Object System.Data.SqlClient.SqlConnection($connString)
         try {
             $connection.Open()
             
-            $idList = ($recordIds -join ',')
+        $idList = ($recordIds | ForEach-Object { "'$_'" }) -join ','
+            Write-Log "Setting Uploaded=$uploaded for records: $idList"
             $query = @"
 UPDATE $tableName 
 SET Uploaded = @Uploaded,
-    ProcessingCompleted = GETDATE(),
-    ErrorMessage = @ErrorMessage
+    UPLOAD_COMPLETED = GETDATE(),
+    UPLOAD_MESSAGE = @ErrorMessage
 WHERE $idCol IN ($idList)
 "@
             
@@ -200,28 +206,22 @@ WHERE $idCol IN ($idList)
         try {
             # Get next batch of unuploaded records
             $batch = Get-NextBatchToUpload -connString $connectionString -batchSize $batchSize -tableName $tableName -idCol $idCol
-            
-            if ($batch.Rows.Count -eq 0) {
-                Write-Log  "Worker $workerNumber - No more unuploaded records to process"
-                break
-            }
-            
-            Write-Log  "Worker $workerNumber - Processing batch of $($batch.Rows.Count) records"
-            
+
             $uploadedIds = @()
             $failedIds = @()
-            
-            # Process each record in the batch
-            Write-Log "HELP!!!!!"
-            foreach ($row in $batch.Rows) {
-                Write-Log $row
+
+            foreach ($row in $batch) {
                 try {
-                    $recordId = $row[$idCol]
-                    Write-Log "Worker $workerNumber - Processing record $recordId"
-                    #RDB
+                    $guid = $row['GUID']
+                    if ([string]::IsNullOrEmpty($guid)) {
+                       # there is an issue with serializing the record from the Get-NextBatchToUpload.  It adds a couple
+                       # records (or junk).  Skipping those
+                       continue;
+                    }
+
                     # *** YOUR UPLOAD/PROCESSING LOGIC HERE ***
                     # Example processing - replace with your actual logic:
-                    Write-Log  "Worker $workerNumber - Processing record $recordId"
+                    Write-Log  "Worker $workerNumber - Processing guid:$guid"
                     # Get data from the record
                     # $data = $row["DataColumn"]
                     # $filename = $row["FileName"]
@@ -237,11 +237,11 @@ WHERE $idCol IN ($idList)
                         # Simulate upload time
                         Start-Sleep -Milliseconds (Get-Random -Minimum 50 -Maximum 200)
                         
-                        $uploadedIds += $recordId
+                        $uploadedIds += $guid
                         $totalUploaded++
                         
                         # Optional: Log successful upload details
-                        Write-Output "Worker $workerNumber - Successfully processed record $recordId"
+                        Write-Log "Worker $workerNumber - Successfully processed record $guid"
                     } else {
                         throw "Simulated upload failure"
                     }
@@ -249,8 +249,9 @@ WHERE $idCol IN ($idList)
                     $totalProcessed++
                     
                 } catch {
-                    write-Log "Worker $workerNumber - Failed to process record $($row[$idCol]): $($_.Exception.Message)"
-                    $failedIds += $row[$idCol]
+                    Write-Log "Worker $workerNumber - Failed to process record: $($_.Exception.Message)"
+                    #Write-Log "Worker $workerNumber - Failed to process record $($row[$idCol]): $($_.Exception.Message)"
+                    #$failedIds += $row[$idCol]
                     $totalFailed++
                 }
             }
@@ -265,16 +266,16 @@ WHERE $idCol IN ($idList)
                 Set-UploadedStatus -connString $connectionString -recordIds $failedIds -uploaded $false -tableName $tableName -idCol $idCol -errorMessage "Upload failed during processing"
             }
             
-            Write-Output "Worker $workerNumber - Batch completed. Uploaded: $($uploadedIds.Count), Failed: $($failedIds.Count), Total processed: $totalProcessed"
+            Write-Log "Worker $workerNumber - Batch completed. Uploaded: $($uploadedIds.Count), Failed: $($failedIds.Count), Total processed: $totalProcessed"
             
         } catch {
-            Write-Output "Worker $workerNumber - Batch processing error: $($_.Exception.Message)"
+            Write-Log "Worker $workerNumber - Batch processing error: $($_.Exception.Message)"
             Start-Sleep -Seconds 5  # Brief pause before retrying
         }
     }
     
     $workerDuration = (Get-Date) - $workerStartTime
-    Write-Output "Worker $workerNumber finished. Processed: $totalProcessed, Uploaded: $totalUploaded, Failed: $totalFailed in $([math]::Round($workerDuration.TotalMinutes, 2)) minutes"
+    Write-Log "Worker $workerNumber finished. Processed: $totalProcessed, Uploaded: $totalUploaded, Failed: $totalFailed in $([math]::Round($workerDuration.TotalMinutes, 2)) minutes"
     
     return @{
         WorkerNumber = $workerNumber
@@ -430,10 +431,10 @@ function Add-TrackingColumns {
     Write-Host @"
 -- Optional: Add tracking columns for better monitoring
 ALTER TABLE $tableName ADD 
-    ProcessingStarted DATETIME2 NULL,
-    ProcessingCompleted DATETIME2 NULL,
-    ProcessingThread INT NULL,
-    ErrorMessage NVARCHAR(MAX) NULL;
+    UPLOAD_STARTED DATETIME2 NULL,
+    UPLOAD_COMPLETED DATETIME2 NULL,
+    UPLOAD_THREAD INT NULL,
+    UPLOAD_MESSAGE NVARCHAR(MAX) NULL;
 
 -- Add index for better performance
 CREATE INDEX IX_${tableName}_Uploaded ON $tableName(Uploaded, $IdColumn);
