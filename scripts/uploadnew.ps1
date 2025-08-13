@@ -1,108 +1,123 @@
-# Create a list of items to process
-$itemList = @("Server1", "Server2", "Server3", "Server4", "Server5", "Server6", "Server7", "Server8")
+using module ../Modules/Database/Classes/SQLServerDatabase.psm1
+using module ../Modules/FileStorage/Classes/OneDriveFileStorage.psm1
+#using module ../Modules/FileStorage/Classes/S3FileStorage.psm1
+using module ../Modules/Jobs/Classes/UploadJobs.psm1
+using module ../Modules/Configuration/Classes/ZDAConfiguration.psm1
 
-# Create RunspacePool with min/max threads
-$minThreads = 1
-$maxThreads = 4
-$runspacePool = [runspacefactory]::CreateRunspacePool($minThreads, $maxThreads)
+$configuration = [ZDAConfiguration]::new()
+$configuration.StartTranscript("upload")
+
+$user_config = $configuration.ReadUserConfiguration()
+$database = [SQLServerDatabase]::new($user_config)
+$database.Connect()
+$TO_UPLOAD = $database.SelectNotUploaded()
+
+
+# Create RunspacePool with 3 threads
+$runspacePool = [runspacefactory]::CreateRunspacePool(1, 3)
 $runspacePool.Open()
 
-Write-Host "Created RunspacePool with $maxThreads threads" -ForegroundColor Green
-Write-Host "Processing $($itemList.Count) items..." -ForegroundColor Green
+Write-Host "Processing $($itemList.Count) items with 3 threads..." -ForegroundColor Green
 
-# Create jobs array to track all running jobs
+# Create jobs array
 $jobs = @()
 
-# Script block to execute for each item
+# Script block
 $scriptBlock = {
-    param($item, $delay)
+    param($item)
     
     $threadId = [System.Threading.Thread]::CurrentThread.ManagedThreadId
-    Write-Output "Thread $threadId - Starting: $item"
+    $startTime = Get-Date
     
-    # Simulate work with variable delay
+    Write-Output "Thread $threadId - Starting: $item.GUID"
+    
+    # Simulate work
+    $delay = Get-Random -Minimum 1 -Maximum 4
     Start-Sleep -Seconds $delay
     
-    Write-Output "Thread $threadId - Completed: $item after $delay seconds"
+    Write-Output "Thread $threadId - Completed: $item.GUID after $delay seconds"
     
-    # Return result
-    return @{
+    # Return structured result
+    return [PSCustomObject]@{
         Item = $item
         ThreadId = $threadId
-        ProcessedAt = Get-Date
+        StartTime = $startTime
+        EndTime = Get-Date
+        Duration = $delay
     }
 }
 
-# Create and start a job for each item
-foreach ($item in $itemList) {
-    # Random delay between 1-3 seconds to simulate varying work
-    $randomDelay = Get-Random -Minimum 1 -Maximum 4
-    
-    # Create PowerShell instance
+# Start jobs
+foreach ($recording in $TO_UPLOAD) {
     $powershell = [powershell]::Create()
     $powershell.RunspacePool = $runspacePool
+    $powershell.AddScript($scriptBlock).AddArgument($recording)
     
-    # Add script and parameters
-    $powershell.AddScript($scriptBlock).AddArgument($item).AddArgument($randomDelay)
-    
-    # Start async execution
-    $asyncResult = $powershell.BeginInvoke()
-    
-    # Store job info
     $jobs += [PSCustomObject]@{
         PowerShell = $powershell
-        AsyncResult = $asyncResult
+        AsyncResult = $powershell.BeginInvoke()
         Item = $item
-        StartTime = Get-Date
     }
 }
 
-Write-Host "All jobs started. Waiting for completion..." -ForegroundColor Yellow
+Write-Host "All jobs started. Monitoring progress..." -ForegroundColor Yellow
 
-# Wait for all jobs to complete and collect results
-$completedJobs = 0
-$results = @()
+# Collect results as jobs complete
+$allResults = @()
+$completedCount = 0
 
-while ($completedJobs -lt $jobs.Count) {
+while ($completedCount -lt $jobs.Count) {
     foreach ($job in $jobs) {
         if ($job.AsyncResult.IsCompleted -and $job.PowerShell) {
             try {
-                # Get the output
-                $output = $job.PowerShell.EndInvoke($job.AsyncResult)
+                # Get all output from this job
+                $jobOutput = $job.PowerShell.EndInvoke($job.AsyncResult)
                 
-                # Display console output
-                foreach ($line in $output) {
-                    if ($line -is [string]) {
-                        Write-Host $line -ForegroundColor Cyan
+                foreach ($output in $jobOutput) {
+                    if ($output -is [string]) {
+                        # Display console messages
+                        Write-Host $output -ForegroundColor Cyan
                     } else {
-                        $results += $line
+                        # This is our structured result object
+                        $allResults += $output
                     }
                 }
                 
-                $completedJobs++
-                Write-Host "Job completed for: $($job.Item) ($completedJobs/$($jobs.Count))" -ForegroundColor Green
+                $completedCount++
+                Write-Host "Completed: $($job.Item) ($completedCount/$($jobs.Count))" -ForegroundColor Green
                 
-                # Clean up this job
+                # Clean up
                 $job.PowerShell.Dispose()
                 $job.PowerShell = $null
                 
             } catch {
-                Write-Host "Error in job for $($job.Item): $($_.Exception.Message)" -ForegroundColor Red
-                $completedJobs++
+                Write-Host "Error processing $($job.Item): $($_.Exception.Message)" -ForegroundColor Red
+                $completedCount++
             }
         }
     }
-    
-    # Brief pause to avoid busy waiting
     Start-Sleep -Milliseconds 100
 }
 
-# Display final results
-Write-Host "`nFinal Results:" -ForegroundColor Magenta
-$results | Sort-Object ProcessedAt | Format-Table Item, ThreadId, ProcessedAt -AutoSize
+# Display results summary
+Write-Host ""
+Write-Host "FINAL RESULTS SUMMARY" -ForegroundColor Magenta
+Write-Host "=====================" -ForegroundColor Magenta
+
+if ($allResults.Count -gt 0) {
+    $allResults | Sort-Object EndTime | Format-Table Item, ThreadId, Duration, StartTime, EndTime -AutoSize
+    
+    Write-Host "Statistics:" -ForegroundColor Yellow
+    Write-Host "Total items processed: $($allResults.Count)" -ForegroundColor White
+    $avgDuration = ($allResults.Duration | Measure-Object -Average).Average
+    Write-Host "Average duration: $([math]::Round($avgDuration, 2)) seconds" -ForegroundColor White
+} else {
+    Write-Host "No results were captured!" -ForegroundColor Red
+}
 
 # Clean up
 $runspacePool.Close()
 $runspacePool.Dispose()
 
+Write-Host ""
 Write-Host "RunspacePool completed and cleaned up." -ForegroundColor Green
