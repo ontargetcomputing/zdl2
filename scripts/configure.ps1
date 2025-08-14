@@ -1252,6 +1252,9 @@ $btnFinish.Add_Click({
             schema = $global:Config.Database.Schema
             userid = $global:Config.Database.Username
             password = $global:Config.Database.Password
+            connectionString = "Server=$($global:Config.Database.Server),$($global:Config.Database.Port);Database=$($global:Config.Database.Database);User ID=$($global:Config.Database.Username);Password=$($global:Config.Database.Password);TrustServerCertificate=true"
+            tableName = "recordings.ZoomRecordings"
+            idColumn = "GUID"
         }
 
         $schedule = @{
@@ -1263,12 +1266,18 @@ $btnFinish.Add_Click({
 
         $accounts = $global:Config.Accounts -join "`r`n"
 
+        $runspaces = @{
+            batchSize = 2
+            maxThreads = 1
+        }
+
         $config = @{
             zoom     = $zoomConfig
             storage  = $storageConfig
             database = $databaseConfig
             schedule = $schedule
             accounts = $accounts
+            runspaces = $runspaces
         }
 
         $configuration.CreateLocalAppdataFolder()
