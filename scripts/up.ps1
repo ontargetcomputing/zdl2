@@ -2,7 +2,7 @@
 param(   
     [string]$ConnectionString = "Server=palomar.cj4cxnl2rpyc.us-west-2.rds.amazonaws.com,1433;Database=zda;User ID=zdauser;Password=YouAre#1;TrustServerCertificate=true",
     [string]$TableName = "recordings.ZoomRecordings",
-    [string]$IdColumn = "GUID",  # Assuming you have an ID column
+    [string]$IdColumn = "GUID", 
     [int]$BatchSize = 2,
     [int]$MaxThreads = 1
 )
@@ -124,7 +124,7 @@ $workerScript = {
 WITH NextBatch AS (
     SELECT TOP ($batchSize) $idCol
     FROM $tableName WITH (READPAST)
-    where UPLOADED = 0 and UPLOAD_STARTED is NULL
+    where UPLOADED = 0 AND (UPLOAD_STARTED is NULL OR UPLOAD_MESSAGE is NOT NULL)
     ORDER BY $idCol
 )
 UPDATE $tableName 
@@ -162,7 +162,6 @@ INNER JOIN NextBatch nb ON t.$idCol = nb.$idCol
     function Set-UploadedStatus {
         param($connString, $recordIds, $uploaded, $tableName, $idCol, $errorMessage = $null)
 
-        Write-Log "Setting Uploaded=$uploaded for records: $($recordIds -join ',')"
         if ($recordIds.Count -eq 0) { return }
         
         $connection = New-Object System.Data.SqlClient.SqlConnection($connString)
@@ -174,11 +173,10 @@ INNER JOIN NextBatch nb ON t.$idCol = nb.$idCol
             $query = @"
 UPDATE $tableName 
 SET Uploaded = @Uploaded,
-    UPLOAD_COMPLETED = GETDATE(),
+    UPLOAD_COMPLETED = CASE WHEN @Uploaded = 1 THEN GETDATE() ELSE UPLOAD_COMPLETED END,
     UPLOAD_MESSAGE = @ErrorMessage
-WHERE $idCol IN ($idList)
+WHERE $idCol IN ($idList)           
 "@
-            
             $command = New-Object System.Data.SqlClient.SqlCommand($query, $connection)
             $command.Parameters.AddWithValue("@Uploaded", $uploaded)
             $command.Parameters.AddWithValue("@ErrorMessage", [System.DBNull]::Value)
@@ -209,16 +207,16 @@ WHERE $idCol IN ($idList)
 
             $uploadedIds = @()
             $failedIds = @()
-
+            
             foreach ($row in $batch) {
                 try {
-                    $guid = $row['GUID']
+                    $guid = $row[$idCol]
                     if ([string]::IsNullOrEmpty($guid)) {
                        # there is an issue with serializing the record from the Get-NextBatchToUpload.  It adds a couple
                        # records (or junk).  Skipping those
                        continue;
                     }
-
+                    $processedValidRecord = $true
                     # *** YOUR UPLOAD/PROCESSING LOGIC HERE ***
                     # Example processing - replace with your actual logic:
                     Write-Log  "Worker $workerNumber - Processing guid:$guid"
@@ -231,7 +229,7 @@ WHERE $idCol IN ($idList)
                     # $uploadResult = Upload-ToDestination -Data $data -FileName $filename
                     
                     # For demo, simulate upload with random success/failure
-                    $uploadSuccess = (Get-Random -Minimum 1 -Maximum 100) -gt 10  # 90% success rate
+                    $uploadSuccess = (Get-Random -Minimum 1 -Maximum 100) -gt 50  # 90% success rate
                     
                     if ($uploadSuccess) {
                         # Simulate upload time
@@ -251,11 +249,17 @@ WHERE $idCol IN ($idList)
                 } catch {
                     Write-Log "Worker $workerNumber - Failed to process record: $($_.Exception.Message)"
                     #Write-Log "Worker $workerNumber - Failed to process record $($row[$idCol]): $($_.Exception.Message)"
-                    #$failedIds += $row[$idCol]
+                    $failedIds += $row[$idCol]
                     $totalFailed++
                 }
             }
             
+            if(($uploadedIds.Count + $failedIds.Count) -eq 0) {
+                # NOTE: we can't just check for $batch.Count -eq 0 above
+                # because of the odd serialization issue which adds 2 records that are invalid
+                Write-Log "Worker $workerNumber - No more recordings to process, exiting."
+                break
+            }
             # Update successful records - set Uploaded = true
             if ($uploadedIds.Count -gt 0) {
                 Set-UploadedStatus -connString $connectionString -recordIds $uploadedIds -uploaded $true -tableName $tableName -idCol $idCol
