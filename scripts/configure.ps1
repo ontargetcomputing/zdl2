@@ -1300,7 +1300,7 @@ $btnFinish.Add_Click({
                 sqlserver = $sqlserver
             }
 
-            $script:database = [SQLServerDatabase]::new($config, $false)  
+            $script:database = [SQLServerDatabase]::new($config, $true)  
             
             try {
                 $database.Connect()
