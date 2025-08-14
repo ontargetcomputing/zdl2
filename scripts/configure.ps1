@@ -1301,15 +1301,6 @@ $btnFinish.Add_Click({
             }
 
             $script:database = [SQLServerDatabase]::new($config, $true)  
-            
-            try {
-                $database.Connect()
-                $database.InsertIntoAccountsToDownloadTable($accounts)
-                $database.Disconnect()
-            }
-            catch {
-                Write-Host "ERROR: $($_.Exception.Message)"
-            } 
         } 
 
         scheduleOn
