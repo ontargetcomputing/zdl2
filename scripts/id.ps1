@@ -160,17 +160,32 @@ function Get-ZoomUsers {
     return $users
 }
 
-# Function to get recordings with enhanced error handling and rate limiting
+# Function to get recordings - supports both account-level and per-user approaches
 function Get-ZoomRecordings {
     param(
         [string]$AccessToken,
-        [string]$UserId,
+        [string]$UserId = $null,           # If specified, gets recordings for this user only
+        [string]$AccountId = "me",         # If UserId is null, gets all account recordings
         [datetime]$From,
         [datetime]$To,
         [int]$PageSize = 300,
-        [int]$MaxRetries = 3
+        [int]$MaxRetries = 3,
+        [switch]$AccountLevel = $false     # Switch to force account-level even if UserId provided
     )
-    Write-ThreadSafeLog "Getting recordings for user: $UserId from $From to $To at top level" -Color White
+    
+    # Determine which endpoint to use
+    if ($AccountLevel -or [string]::IsNullOrEmpty($UserId)) {
+        # Account-level endpoint - gets ALL recordings for the account
+        $endpoint = "accounts/$AccountId"
+        $description = "account-level recordings"
+        Write-ThreadSafeLog "Getting account-level recordings from $From to $To" -Color White
+    } else {
+        # User-level endpoint - gets recordings for specific user
+        $endpoint = "users/$UserId"
+        $description = "recordings for user $UserId"
+        Write-ThreadSafeLog "Getting recordings for user: $UserId from $From to $To" -Color White
+    }
+    
     $recordings = @()
     $nextPageToken = $null
     $pageCount = 0
@@ -180,7 +195,7 @@ function Get-ZoomRecordings {
         $fromStr = $From.ToString("yyyy-MM-dd")
         $toStr = $To.ToString("yyyy-MM-dd")
         
-        $url = "https://api.zoom.us/v2/users/$UserId/recordings?from=$fromStr&to=$toStr&page_size=$PageSize"
+        $url = "https://api.zoom.us/v2/$endpoint/recordings?from=$fromStr&to=$toStr&page_size=$PageSize"
         if ($nextPageToken) {
             $url += "&next_page_token=$nextPageToken"
         }
@@ -198,30 +213,56 @@ function Get-ZoomRecordings {
                 break
             } catch {
                 $statusCode = $_.Exception.Response.StatusCode.value__
-                if ($statusCode -eq 429) {
+                $errorMessage = $_.Exception.Message
+                
+                # Try to get detailed error message
+                if ($_.Exception.Response) {
+                    try {
+                        $reader = New-Object System.IO.StreamReader($_.Exception.Response.GetResponseStream())
+                        $errorBody = $reader.ReadToEnd()
+                        $reader.Close()
+                        $errorJson = $errorBody | ConvertFrom-Json
+                        if ($errorJson.message) {
+                            $errorMessage = $errorJson.message
+                        }
+                    } catch {
+                        # Use original error message if parsing fails
+                    }
+                }
+                
+                if ($statusCode -eq 400 -and $errorMessage -like "*Invalid access token*scopes*") {
+                    Write-ThreadSafeLog "SCOPE ERROR for $description!" -Level "ERROR" -Color Red
+                    if ($AccountLevel -or [string]::IsNullOrEmpty($UserId)) {
+                        Write-ThreadSafeLog "Required scopes for account-level: recording:read:master, cloud_recording:read:master" -Level "ERROR" -Color Red
+                    } else {
+                        Write-ThreadSafeLog "Required scopes for user-level: cloud_recording:read:list_user_recordings, cloud_recording:read:list_user_recordings:admin" -Level "ERROR" -Color Red
+                    }
+                    Write-ThreadSafeLog "Error details: $errorMessage" -Level "ERROR" -Color Red
+                    throw "Missing required scopes for recordings access"
+                } elseif ($statusCode -eq 429) {
                     # Rate limited - exponential backoff
                     $waitTime = [math]::Pow(2, $retry) * 5
-                    Write-ThreadSafeLog "Rate limited for user $UserId, waiting $waitTime seconds..." -Level "WARNING" -Color Yellow
+                    Write-ThreadSafeLog "Rate limited for $description, waiting $waitTime seconds..." -Level "WARNING" -Color Yellow
                     Start-Sleep -Seconds $waitTime
                 } elseif ($statusCode -eq 404) {
-                    # User not found or no recordings
-                    Write-ThreadSafeLog "No recordings found for user: $UserId" -Level "INFO" -Color Gray
+                    # No recordings found
+                    Write-ThreadSafeLog "No recordings found for $description" -Level "INFO" -Color Gray
                     return @()
                 } else {
-                    Write-ThreadSafeLog "API error for user $UserId (attempt $retry/$MaxRetries): $_ (Status: $statusCode)" -Level "WARNING" -Color Yellow
+                    Write-ThreadSafeLog "API error for $description (attempt $retry/$MaxRetries): $errorMessage (Status: $statusCode)" -Level "WARNING" -Color Yellow
                     Start-Sleep -Seconds $retry
                 }
             }
         }
         
         if (-not $success) {
-            Write-ThreadSafeLog "Failed to get recordings for user $UserId after $MaxRetries attempts" -Level "ERROR" -Color Red
+            Write-ThreadSafeLog "Failed to get $description after $MaxRetries attempts" -Level "ERROR" -Color Red
             break
         }
         
         if ($response.meetings -and $response.meetings.Count -gt 0) {
             $recordings += $response.meetings
-            Write-ThreadSafeLog "User: $UserId, Page: $pageCount, Found: $($response.meetings.Count) meetings" -Color White
+            Write-ThreadSafeLog "Page: $pageCount, Found: $($response.meetings.Count) meetings" -Color White
         }
         
         $nextPageToken = $response.next_page_token
@@ -231,6 +272,7 @@ function Get-ZoomRecordings {
         
     } while ($nextPageToken)
     
+    Write-ThreadSafeLog "Total recordings found for $description  $($recordings.Count)" -Color Green
     return $recordings
 }
 
