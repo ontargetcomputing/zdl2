@@ -38,7 +38,7 @@ class S3FileStorage : AbstractFileStorage {
         try {
             Write-S3Object -BucketName $this.BucketName -File $FileToUpload -Key $Key -Region $this.Region -AccessKey $this.AccessKey -SecretKey $this.SecretAccessKey
             Write-Host("Upload complete for $($Key)")
-            return [pscustomobject]@{
+            [pscustomobject]@{
                 uploadSuccess = $true
                 GUID_ID       = $recording.GUID
                 S3PATH        = $Key
@@ -48,7 +48,7 @@ class S3FileStorage : AbstractFileStorage {
             }
         } catch {
             Write-Host "Failed to upload $($Key): $($_.Exception.Message)"
-            return [pscustomobject]@{
+            [pscustomobject]@{
                 uploadSuccess = $false
                 GUID_ID       = $recording.GUID
                 S3PATH        = $Key
