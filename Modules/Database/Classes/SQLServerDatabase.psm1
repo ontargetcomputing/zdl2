@@ -34,7 +34,7 @@ class SQLServerDatabase : AbstractDatabase {
     }
 
     SQLServerDatabase([object]$configuration, [boolean]$create) {
-        Write-Host "SQLServerDatabase Constructor called"
+        Write-Host "SQLServerDatabase Constructor called with create"
         $this.configuration = [ZDAConfiguration]::new()
         $sqlserver = $configuration.sqlserver
         $this.ConnectionString = "Server=$($sqlserver.server),$($sqlserver.port);Database=$($sqlserver.database);User ID=$($sqlserver.userid);Password=$($sqlserver.password);TrustServerCertificate=true"
@@ -296,7 +296,7 @@ class SQLServerDatabase : AbstractDatabase {
         $mainTableSQL = @"
         IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '$($this.Schema)' AND TABLE_NAME = '$([SQLServerDatabase]::MainTableName)')
         CREATE TABLE $table (
-            GUID NVARCHAR(255) PRIMARY KEY,
+            GUID NVARCHAR(255) NOT NULL,
             HOST_EMAIL NVARCHAR(255),
             RECORDING_START NVARCHAR(255),
             RECORDING_END NVARCHAR(255),
@@ -309,7 +309,11 @@ class SQLServerDatabase : AbstractDatabase {
             TRYDLAGAIN INT,
             DOWNLOAD_PATH NVARCHAR(255),
             UPLOADED BIT,
-            UPLOAD_PATH NVARCHAR(255)
+            UPLOAD_PATH NVARCHAR(255),
+            UPLOAD_STARTED DATETIME2 NULL,
+            UPLOAD_COMPLETED DATETIME2 NULL,
+            UPLOAD_THREAD INT NULL,
+            UPLOAD_MESSAGE NVARCHAR(MAX) NULL
         )
 "@
         #Write-Host("Query:$mainTableSQL")
@@ -327,46 +331,56 @@ class SQLServerDatabase : AbstractDatabase {
         #Write-Host("Query:$accountsTableSQL")
         $command.CommandText = $accountsTableSQL
         $command.ExecuteNonQuery()
-        $command.Dispose()
-    }
 
-    [object]SelectNotUploaded() {
         $table = $this.Schema + "." + [SQLServerDatabase]::MainTableName
-        Write-Host "Selecting not uploaded recordings from $($table)"
-        $sql = "SELECT * FROM $($table) WHERE UPLOADED = 0"        
-        $connection = $this.Connect()
-        $command = $connection.CreateCommand()
-        $command.CommandText = $sql
-        $command.CommandType = [System.Data.CommandType]::Text
-        $reader = $command.ExecuteReader()
-
-        $outputData = @()
-        
-        while ($reader.Read()) {
-            $recording = [PSCustomObject]@{
-                GUID            = $reader['GUID'] 
-                HOST_EMAIL      = $reader['HOST_EMAIL'] 
-                RECORDING_START = $reader['RECORDING_START'] 
-                RECORDING_END   = $reader['RECORDING_END'] 
-                FILE_SIZE       = $reader['FILE_SIZE'] 
-                DOWNLOAD_URL    = $reader['DOWNLOAD_URL'] 
-                MEETING_ID      = $reader['MEETING_ID'] 
-                TOPIC           = $reader['TOPIC'] 
-                RECORDING_TYPE  = $reader['RECORDING_TYPE']
-                DOWNLOADED      = $reader['DOWNLOADED']
-                TRYDLAGAIN      = $reader['TRYDLAGAIN']
-                DOWNLOAD_PATH   = $reader['DOWNLOAD_PATH'] 
-                UPLOADED        = $reader['UPLOADED']
-                UPLOAD_PATH     = $reader['UPLOAD_PATH']
-            }
-            $outputData += $recording    
-            Write-Host "Found GUID: $($recording.GUID)"
-        }
-        
-        # Clean up
-        $reader.Close()
+        $createIndexSQL = @"
+        IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Uploaded' AND object_id = OBJECT_ID('$table'))
+        CREATE INDEX IX_Uploaded 
+        ON $table (Uploaded)
+"@
+        #Write-Host("Query:$createIndexSQL")
+        $command.CommandText = $createIndexSQL
+        $command.ExecuteNonQuery()
         $command.Dispose()
-        
-        return $outputData
     }
+
+    # [object]SelectNotUploaded() {
+    #     $table = $this.Schema + "." + [SQLServerDatabase]::MainTableName
+    #     Write-Host "Selecting not uploaded recordings from $($table)"
+    #     $sql = "SELECT * FROM $($table) WHERE UPLOADED = 0"        
+    #     $connection = $this.Connect()
+    #     $command = $connection.CreateCommand()
+    #     $command.CommandText = $sql
+    #     $command.CommandType = [System.Data.CommandType]::Text
+    #     $reader = $command.ExecuteReader()
+
+    #     $outputData = @()
+        
+    #     while ($reader.Read()) {
+    #         $recording = [PSCustomObject]@{
+    #             GUID            = $reader['GUID'] 
+    #             HOST_EMAIL      = $reader['HOST_EMAIL'] 
+    #             RECORDING_START = $reader['RECORDING_START'] 
+    #             RECORDING_END   = $reader['RECORDING_END'] 
+    #             FILE_SIZE       = $reader['FILE_SIZE'] 
+    #             DOWNLOAD_URL    = $reader['DOWNLOAD_URL'] 
+    #             MEETING_ID      = $reader['MEETING_ID'] 
+    #             TOPIC           = $reader['TOPIC'] 
+    #             RECORDING_TYPE  = $reader['RECORDING_TYPE']
+    #             DOWNLOADED      = $reader['DOWNLOADED']
+    #             TRYDLAGAIN      = $reader['TRYDLAGAIN']
+    #             DOWNLOAD_PATH   = $reader['DOWNLOAD_PATH'] 
+    #             UPLOADED        = $reader['UPLOADED']
+    #             UPLOAD_PATH     = $reader['UPLOAD_PATH']
+    #         }
+    #         $outputData += $recording    
+    #         Write-Host "Found GUID: $($recording.GUID)"
+    #     }
+        
+    #     # Clean up
+    #     $reader.Close()
+    #     $command.Dispose()
+        
+    #     return $outputData
+    # }
 }

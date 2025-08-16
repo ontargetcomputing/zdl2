@@ -35,9 +35,9 @@ class AbstractDatabase {
         throw "The 'SelectNotDownloaded' method must be implemented in a derived class."
     }
 
-    [object]SelectNotUploaded() {
-        throw "The 'SelectNotUploaded' method must be implemented in a derived class."
-    }
+    # [object]SelectNotUploaded() {
+    #     throw "The 'SelectNotUploaded' method must be implemented in a derived class."
+    # }
 
     [hashtable]UpdateDownloadedRecording($GUID_ID, $TRYDLAGAIN, $FILEPATH, $CLOUDSIZE) {
         throw "The 'UpdateDatabaseInDownload' method must be implemented in a derived class."
