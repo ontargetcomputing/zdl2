@@ -227,7 +227,7 @@ function Get-WorkerScriptBlock {
             Write-Host $logMessage -ForegroundColor $Color
             
             # Simple file logging
-            $logFile = "zoom_identify_$ThreadId_$(Get-Date -Format 'yyyyMMdd').log"
+            $logFile = "zoom_identify_1_$(Get-Date -Format 'yyyyMMdd').log"
             Add-Content -Path $logFile -Value $logMessage -Force
         }
 
@@ -256,15 +256,13 @@ function Get-WorkerScriptBlock {
                 [int]$PageSize = 300,
                 [int]$MaxRetries = 3
             )
-            Write-ThreadSafeLog "Getting recordings for user: $UserId from $From to $To in runspace level" -Color White
             $recordings = @()
             $nextPageToken = $null
             $pageCount = 0
+            $fromStr = $From.ToString("yyyy-MM-dd")
+            $toStr = $To.ToString("yyyy-MM-dd")
             do {
                 $pageCount++
-                Write-ThreadSafeLog "Page: $pageCount" -Color White
-                $fromStr = $From.ToString("yyyy-MM-dd")
-                $toStr = $To.ToString("yyyy-MM-dd")
                 $url = "https://api.zoom.us/v2/users/me/recordings?from=$fromStr&to=$toStr&page_size=$PageSize"
                 if ($nextPageToken) {
                     $url += "&next_page_token=$nextPageToken"
@@ -284,36 +282,35 @@ function Get-WorkerScriptBlock {
                         if ($statusCode -eq 429) {
                             # Rate limited - exponential backoff
                             $waitTime = [math]::Pow(2, $retry) * 5
-                            Write-ThreadSafeLog "Rate limited for user $UserId, waiting $waitTime seconds..." -Level "WARNING"
+                            Write-ThreadSafeLog "Rate limited for account $UserId, waiting $waitTime seconds..." -Level "WARNING"
                             Start-Sleep -Seconds $waitTime
                         } elseif ($statusCode -eq 404) {
                             # User not found or no recordings
-                            Write-ThreadSafeLog "No recordings found for user: $UserId" -Level "INFO"
+                            Write-ThreadSafeLog "No recordings found for account $UserId" -Level "INFO"
                             return @()
                         } else {
-                            Write-ThreadSafeLog "API error for user $UserId (attempt $retry/$MaxRetries): $_ (Status: $statusCode)" -Level "WARNING"
+                            Write-ThreadSafeLog "API error for account $UserId (attempt $retry/$MaxRetries): $_ (Status: $statusCode)" -Level "WARNING"
                             Start-Sleep -Seconds $retry
                         }
                     }
                 }
                 
                 if (-not $success) {
-                    Write-ThreadSafeLog "Failed to get recordings for user $UserId after $MaxRetries attempts" -Level "ERROR"
+                    Write-ThreadSafeLog "Failed to get recordings for account $UserId after $MaxRetries attempts" -Level "ERROR"
                     break
                 }
+            
                 if ($response.meetings -and $response.meetings.Count -gt 0) {
-                    $recordings += $response.meetings
-                    Write-ThreadSafeLog "User: $UserId, Page: $pageCount, Found: $($response.meetings.Count) meetings"
+                    $totalRecordingFiles = ($response.meetings | ForEach-Object { $_.recording_files.Count } | Measure-Object -Sum).Sum
+                    Write-ThreadSafeLog "Account: $UserId, Page: $pageCount, Found: $totalRecordingFiles recordings over $($response.meetings.Count) meetings"
+                    #Write-ThreadSafeLog "Full response: $(($response | ConvertTo-Json -Depth 10))" -Level "DEBUG"
                 } 
                 
                 $nextPageToken = $response.next_page_token
-                $nextPageTokenMsg = $null
-                if ($null -eq $nextPageToken) {
-                    $nextPageTokenMsg = "NONE"
-                } else {
-                    $nextPageTokenMsg = $nextPageToken
+                if (-not [string]::IsNullOrEmpty($nextPageToken)) {
+                     Write-ThreadSafeLog "Account: $UserId, has another page for $fromStr to $toString - $nextPageTokenMsg"
                 }
-                Write-ThreadSafeLog "Next page token: $nextPageTokenMsg"
+               
                 # Rate limiting - be respectful to API
                 Start-Sleep -Milliseconds 150
                 
@@ -331,48 +328,31 @@ function Get-WorkerScriptBlock {
             )
             
             if ($DataTable.Rows.Count -eq 0) {
-                Write-ThreadSafeLog "No records to insert for bulk insert into $TableName" -Level "INFO"
+                Write-ThreadSafeLog "No records to insert for bulk insert for $UserId" -Level "INFO"
                 return $true
             }
-            Write-ThreadSafeLog "Starting bulk insert of $($DataTable.Rows.Count) records into $TableName" -Level "INFO"
+            Write-ThreadSafeLog "Starting bulk insert of $($DataTable.Rows.Count) records for $UserId" -Level "INFO"
             
             $connection = $null
+            $bulkCopy = $null
+
             try {
-                $connection = New-Object System.Data.SqlClient.SqlConnection($ConnectionString)
-                $connection.Open()
-                $bulkCopy = New-Object System.Data.SqlClient.SqlBulkCopy($connection)
+                $bulkCopy = New-Object System.Data.SqlClient.SqlBulkCopy($ConnectionString)
                 $bulkCopy.DestinationTableName = $TableName
-                $bulkCopy.BatchSize = $DataTable.Rows.Count
-                # Map columns
-                foreach ($column in $DataTable.Columns) {
-                    $bulkCopy.ColumnMappings.Add($column.ColumnName, $column.ColumnName) | Out-Null
-                }
-                Write-ThreadSafeLog "BulkCopy column mappings: $($bulkCopy.ColumnMappings.Count) columns" -Level "DEBUG"
-                Write-ThreadSafeLog "BulkCopy destination table: $TableName" -Level "DEBUG"
-                Write-ThreadSafeLog "BulkCopy batch size: $($bulkCopy.BatchSize)" -Level "DEBUG"
-                Write-ThreadSafeLog "BulkCopy timeout: $($bulkCopy.BulkCopyTimeout)" -Level "DEBUG"
+                $bulkCopy.BatchSize = 1000
                 $bulkCopy.WriteToServer($DataTable)
-                Write-ThreadSafeLog "Bulk inserted $($DataTable.Rows.Count) records" -Level "INFO"
+                Write-ThreadSafeLog "Bulk inserted $($DataTable.Rows.Count) records for $UserId" -Level "INFO"
                 return $true
             } catch {
-                Write-ThreadSafeLog "Bulk insert failed: $_" -Level "ERROR"
-                if ($_.Exception) {
-                    Write-ThreadSafeLog "Exception type: $($_.Exception.GetType().FullName)" -Level "ERROR"
-                    Write-ThreadSafeLog "Exception message: $($_.Exception.Message)" -Level "ERROR"
-                    if ($_.Exception.InnerException) {
-                        Write-ThreadSafeLog "Inner exception: $($_.Exception.InnerException.Message)" -Level "ERROR"
-                    }
+                Write-ThreadSafeLog "Bulk insert failed for $UserId - $_" -Level "ERROR"
+                if ($transaction) {
+                    try { $transaction.Rollback() } catch { }
                 }
                 return $false
             } finally {
-                if ($connection -and $connection.State -eq 'Open') {
-                    try {
-                        $connection.Close()
-                        Write-ThreadSafeLog "SQL connection closed after bulk insert." -Level "DEBUG"
-                    } catch {
-                        Write-ThreadSafeLog "Error closing SQL connection: $_" -Level "ERROR"
-                    }
-                }
+                if ($bulkCopy) { $bulkCopy.Dispose() }
+                if ($transaction) { $transaction.Dispose() }
+                if ($connection) { $connection.Close(); $connection.Dispose() }
             }
         }
         
@@ -384,13 +364,12 @@ function Get-WorkerScriptBlock {
                 [string]$ConnectionString,
                 [string]$TableName
             )
-            Write-ThreadSafeLog "Processing batch of $($Meetings.Count) meetings" -Color White
+
+            $totalRecordingFiles = ($response.meetings | ForEach-Object { $_.recording_files.Count } | Measure-Object -Sum).Sum
+            Write-ThreadSafeLog "Processing batch of $totalRecordingFiles recordings over $($Meetings.Count) meetings" -Color White
             # Create DataTable for bulk insert
             $dataTable = New-Object System.Data.DataTable
             
-            # Define columns
-            $columns = @(
-            # Define columns and types
             $dataTable.Columns.Add('GUID', [string]) | Out-Null
             $dataTable.Columns.Add('HOST_EMAIL', [string]) | Out-Null
             $dataTable.Columns.Add('RECORDING_START', [string]) | Out-Null
@@ -409,7 +388,6 @@ function Get-WorkerScriptBlock {
             $dataTable.Columns.Add('UPLOAD_COMPLETED', [datetime]) | Out-Null
             $dataTable.Columns.Add('UPLOAD_THREAD', [string]) | Out-Null
             $dataTable.Columns.Add('UPLOAD_MESSAGE', [string]) | Out-Null
-            )
 
             $batchProcessed = 0
             $batchInserted = 0
@@ -446,10 +424,10 @@ function Get-WorkerScriptBlock {
                         $row['MEETING_ID'] = $meeting.id.ToString()
                         $row['TOPIC'] = if($meeting.topic) { $meeting.topic.Substring(0, [Math]::Min($meeting.topic.Length, 250)) } else { "" }
                         $row['RECORDING_TYPE'] = if($file.recording_type) { $file.recording_type } else { "" }
-                        $row['DOWNLOADED'] = $false
+                        $row['DOWNLOADED'] = 0
                         $row['TRYDLAGAIN'] = 0
                         $row['DOWNLOAD_PATH'] = ""
-                        $row['UPLOADED'] = $false
+                        $row['UPLOADED'] = 0
                         $row['UPLOAD_PATH'] = ""
                         $row['UPLOAD_STARTED'] = [System.DBNull]::Value
                         $row['UPLOAD_COMPLETED'] = [System.DBNull]::Value
@@ -475,9 +453,8 @@ function Get-WorkerScriptBlock {
                 
                 # Insert remaining records
                 if ($dataTable.Rows.Count -gt 0) {
-                    Write-ThreadSafeLog "Bulk inserting remaining records for account: $Account" -Color White -Level "INFO"
-                    # $dtJson = $dataTable | ConvertTo-Json -Depth 5
-                    #Write-ThreadSafeLog "DataTable contents: $dtJson" -Color White -Level "DEBUG"
+                    Write-ThreadSafeLog "Bulk inserting remaining records into account: $Account" -Color White -Level "INFO"
+
                     if (Invoke-BulkInsert -ConnectionString $ConnectionString -TableName $TableName -DataTable $dataTable) {
                         # Optionally add custom progress tracking here if needed
                     } else {
@@ -522,19 +499,15 @@ function Get-WorkerScriptBlock {
                         $allRecordings += $chunkRecordings
                     }
                 } catch {
-                    Write-ThreadSafeLog "Error querying recordings for account: $Account. Exception: $_" -Level "ERROR"
+                    Write-ThreadSafeLog "Error querying recordings for $Account from $($chunkStart.ToString('yyyy-MM-dd')) to $($chunkEnd.ToString('yyyy-MM-dd'))with . Exception: $_" -Level "ERROR"
                 }
                 $chunkStart = $chunkEnd
             }
 
-
+            Write-ThreadSafeLog "Account: $Account, Found: $($allRecordings.Count) meetings"
             if ($allRecordings.Count -gt 0) {
-                Write-ThreadSafeLog "Account: $Account, Found: $($allRecordings.Count) meetings"
-                # Process recordings
                 Process-RecordingsBatch -Meetings $allRecordings -ExistingRecordings $ExistingRecordings -ConnectionString $ConnectionString -TableName $TableName
-            } else {
-                Write-ThreadSafeLog "No recordings found for account: $Account"
-            }
+            } 
 
         } catch {
             Write-ThreadSafeLog "Error processing account $Account`: $_" -Level "ERROR"
