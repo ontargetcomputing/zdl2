@@ -261,6 +261,7 @@ function Get-WorkerScriptBlock {
             $pageCount = 0
             $fromStr = $From.ToString("yyyy-MM-dd")
             $toStr = $To.ToString("yyyy-MM-dd")
+            Write-ThreadSafeLog "Querying recordings for $Account from $($fromStr) to $($toStr)"
             do {
                 $pageCount++
                 $url = "https://api.zoom.us/v2/users/me/recordings?from=$fromStr&to=$toStr&page_size=$PageSize"
@@ -304,6 +305,7 @@ function Get-WorkerScriptBlock {
                     $totalRecordingFiles = ($response.meetings | ForEach-Object { $_.recording_files.Count } | Measure-Object -Sum).Sum
                     Write-ThreadSafeLog "Account: $UserId, Page: $pageCount, Found: $totalRecordingFiles recordings over $($response.meetings.Count) meetings"
                     #Write-ThreadSafeLog "Full response: $(($response | ConvertTo-Json -Depth 10))" -Level "DEBUG"
+                    $recordings += $response.meetings
                 } 
                 
                 $nextPageToken = $response.next_page_token
@@ -339,7 +341,7 @@ function Get-WorkerScriptBlock {
             try {
                 $bulkCopy = New-Object System.Data.SqlClient.SqlBulkCopy($ConnectionString)
                 $bulkCopy.DestinationTableName = $TableName
-                $bulkCopy.BatchSize = 1000
+                $bulkCopy.BatchSize = $BatchSize
                 $bulkCopy.WriteToServer($DataTable)
                 Write-ThreadSafeLog "Bulk inserted $($DataTable.Rows.Count) records for $UserId" -Level "INFO"
                 return $true
@@ -365,7 +367,7 @@ function Get-WorkerScriptBlock {
                 [string]$TableName
             )
 
-            $totalRecordingFiles = ($response.meetings | ForEach-Object { $_.recording_files.Count } | Measure-Object -Sum).Sum
+            $totalRecordingFiles = ($meetings | ForEach-Object { $_.recording_files.Count } | Measure-Object -Sum).Sum
             Write-ThreadSafeLog "Processing batch of $totalRecordingFiles recordings over $($Meetings.Count) meetings" -Color White
             # Create DataTable for bulk insert
             $dataTable = New-Object System.Data.DataTable
@@ -439,7 +441,7 @@ function Get-WorkerScriptBlock {
                         $batchInserted++
                         
                         # Bulk insert when batch is full
-                            if ($dataTable.Rows.Count -ge $BatchSize) {
+                        if ($dataTable.Rows.Count -ge 1000) {
                             Write-ThreadSafeLog "Bulk inserting records for account: $Account" -Color White -Level "INFO"
                             if (Invoke-BulkInsert -ConnectionString $ConnectionString -TableName $TableName -DataTable $dataTable) {
                                 # Optionally add custom progress tracking here if needed
@@ -485,7 +487,7 @@ function Get-WorkerScriptBlock {
                 if ($chunkEnd -gt $EndDate) {
                     $chunkEnd = $EndDate
                 }
-                Write-ThreadSafeLog "Querying recordings for $Account from $($chunkStart.ToString('yyyy-MM-dd')) to $($chunkEnd.ToString('yyyy-MM-dd'))"
+        
                 try {
                     $chunkRecordings = Get-ZoomRecordings -AccessToken $AccessToken -UserId $Account -From $chunkStart -To $chunkEnd
                     # Ensure $chunkRecordings is always an array
@@ -504,8 +506,10 @@ function Get-WorkerScriptBlock {
                 $chunkStart = $chunkEnd
             }
 
-            Write-ThreadSafeLog "Account: $Account, Found: $($allRecordings.Count) meetings"
+            #Write-ThreadSafeLog "Full response: $(($allRecordings | ConvertTo-Json -Depth 10))" -Level "DEBUG"
             if ($allRecordings.Count -gt 0) {
+                $totalRecordingFiles = ($allRecordings | ForEach-Object { $_.recording_files.Count } | Measure-Object -Sum).Sum
+                Write-ThreadSafeLog "Account: $Account,  Processing: $totalRecordingFiles recordings over $($allRecordings.Count) meetings"
                 Process-RecordingsBatch -Meetings $allRecordings -ExistingRecordings $ExistingRecordings -ConnectionString $ConnectionString -TableName $TableName
             } 
 
