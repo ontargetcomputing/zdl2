@@ -341,6 +341,7 @@ WHERE GUID = '$Guid'
             )
             
             $headers = @{
+                "Content-Type"  = "application/x-www-form-urlencoded"
                 "Authorization" = "Bearer $AccessToken"
             }
             
@@ -520,6 +521,7 @@ WHERE GUID = '$Guid'
             Write-ThreadSafeLog "Account: $HostEmail, Found: $($recordingsToDownload.Count) recordings to download"
             
             if ($recordingsToDownload.Count -gt 0) {
+                Write-ThreadSafeLog "Starting download to: $BaseDownloadPath" -Color Cyan
                 Process-RecordingsDownload -Recordings $recordingsToDownload -AccessToken $AccessToken -BaseDownloadPath $BaseDownloadPath -ConnectionString $ConnectionString -TableName $TableName
             } else {
                 Write-ThreadSafeLog "No recordings to download for account: $HostEmail" -Color Yellow
@@ -541,7 +543,7 @@ try {
     
     # Extract configuration values
     $MaxThreads = if ($config.runspaces.maxThreads) { $config.runspaces.maxThreads } else { 3 }
-    $BaseDownloadPath = if ($config.download.basePath) { $config.download.basePath } else { ".\Downloads" }
+    $BaseDownloadPath = if ($config.downloads.basepath) { $config.downloads.basepath } else { ".\Downloads" }
     
     Write-ThreadSafeLog "Max Threads: $MaxThreads, Download Path: $BaseDownloadPath" -Color Cyan
     
@@ -630,10 +632,12 @@ ORDER BY HOST_EMAIL
     
     # Create runspaces for each account
     $runspaces = @()
-    $threadId = 1
+    $accountIndex = 0
     
     foreach ($hostEmail in $hostEmails) {
+        $threadId = ($accountIndex % $MaxThreads) + 1  
         Write-ThreadSafeLog "Starting thread $threadId for account: $hostEmail" -Color Yellow
+        
         $powershell = [powershell]::Create()
         $powershell.RunspacePool = $runspacePool
         
@@ -657,11 +661,10 @@ ORDER BY HOST_EMAIL
             StartTime = Get-Date
         }
         
-        $runspaces += $runspaceInfo
-        $threadId++
-        
-        Write-ThreadSafeLog "Started thread $($threadId-1) for account: $hostEmail" -Color Yellow
-        
+        $runspaces += $runspaceInfo        
+        Write-ThreadSafeLog "Started thread for account: $hostEmail (Thread ID: $threadId, Account Index: $accountIndex)" -Color Yellow
+        $accountIndex++
+
         # Stagger thread starts to avoid overwhelming the API
         Start-Sleep -Milliseconds 500
     }
