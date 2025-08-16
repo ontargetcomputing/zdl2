@@ -439,7 +439,7 @@ function Get-WorkerScriptBlock {
                         $batchInserted++
                         
                         # Bulk insert when batch is full
-                        if ($dataTable.Rows.Count -ge 1000) {
+                            if ($dataTable.Rows.Count -ge $BatchSize) {
                             Write-ThreadSafeLog "Bulk inserting records for account: $Account" -Color White -Level "INFO"
                             if (Invoke-BulkInsert -ConnectionString $ConnectionString -TableName $TableName -DataTable $dataTable) {
                                 # Optionally add custom progress tracking here if needed
