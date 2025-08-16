@@ -1268,7 +1268,14 @@ $btnFinish.Add_Click({
 
         $runspaces = @{
             batchSize = 2
-            maxThreads = 1
+            maxThreads = 10
+        }
+
+        $downloads = @{
+            maxConcurrentDownloads = 3
+            downloadRetryCount = 5
+            downloadTimeout = 300
+            basepath = $configuration.GetDownloadsDirectoryPath()
         }
 
         $config = @{
@@ -1278,7 +1285,9 @@ $btnFinish.Add_Click({
             schedule = $schedule
             accounts = $accounts
             runspaces = $runspaces
+            downloads = $downloads
         }
+
 
         $configuration.CreateLocalAppdataFolder()
         $jsonString = $config | ConvertTo-Json
