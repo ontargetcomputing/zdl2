@@ -361,6 +361,7 @@ function Get-WorkerScriptBlock {
         # Function to process recordings in batches
         function Process-RecordingsBatch {
             param(
+                [string]$Account,
                 [array]$Meetings,
                 [hashtable]$ExistingRecordings,
                 [string]$ConnectionString,
@@ -418,7 +419,7 @@ function Get-WorkerScriptBlock {
                         # Create new row
                         $row = $dataTable.NewRow()
                         $row['GUID'] = $file.id
-                        $row['HOST_EMAIL'] = if($meeting.host_email) { $meeting.host_email } else { "" }
+                        $row['HOST_EMAIL'] = $Account
                         $row['RECORDING_START'] = if($file.recording_start) { $file.recording_start } else { $meeting.start_time }
                         $row['RECORDING_END'] = if($file.recording_end) { $file.recording_end } else { "" }
                         $row['FILE_SIZE'] = if($file.file_size) { [int]$file.file_size } else { [System.DBNull]::Value }
@@ -510,7 +511,7 @@ function Get-WorkerScriptBlock {
             if ($allRecordings.Count -gt 0) {
                 $totalRecordingFiles = ($allRecordings | ForEach-Object { $_.recording_files.Count } | Measure-Object -Sum).Sum
                 Write-ThreadSafeLog "Account: $Account,  Processing: $totalRecordingFiles recordings over $($allRecordings.Count) meetings"
-                Process-RecordingsBatch -Meetings $allRecordings -ExistingRecordings $ExistingRecordings -ConnectionString $ConnectionString -TableName $TableName
+                Process-RecordingsBatch -Account $Account -Meetings $allRecordings -ExistingRecordings $ExistingRecordings -ConnectionString $ConnectionString -TableName $TableName
             } 
 
         } catch {
