@@ -126,7 +126,7 @@ function Get-RecordingsToDownload {
         [string]$ConnectionString,
         [string]$TableName,
         [string]$HostEmail,
-        [int]$MaxRecords = 1000
+        [int]$MaxRecords = 5000  # Increased for better performance
     )
     
     $sql = @"
@@ -173,36 +173,6 @@ function New-DownloadDirectory {
     return $downloadPath
 }
 
-# Function to update recording status in database
-function Update-RecordingStatus {
-    param(
-        [string]$ConnectionString,
-        [string]$TableName,
-        [string]$Guid,
-        [bool]$Downloaded,
-        [string]$DownloadPath = "",
-        [int]$TryDlAgain = 0,
-        [string]$ErrorMessage = ""
-    )
-    
-    $downloadedValue = if ($Downloaded) { 1 } else { 0 }
-    $sql = @"
-UPDATE $TableName 
-SET DOWNLOADED = $downloadedValue,
-    DOWNLOAD_PATH = '$DownloadPath',
-    TRYDLAGAIN = $TryDlAgain
-WHERE GUID = '$Guid'
-"@
-    
-    try {
-        Invoke-Sqlcmd -ConnectionString $ConnectionString -Query $sql -QueryTimeout 30
-        return $true
-    } catch {
-        Write-ThreadSafeLog "Failed to update recording status for GUID $Guid`: $_" -Level "ERROR" -Color Red
-        return $false
-    }
-}
-
 # Function to create the main script block for runspace execution
 function Get-WorkerScriptBlock {
     return {
@@ -212,7 +182,9 @@ function Get-WorkerScriptBlock {
             $ConnectionString,
             $TableName,
             $BaseDownloadPath,
-            $ThreadId
+            $ThreadId,
+            $MaxRecords,
+            $BatchUpdateSize
         )
         
         # Thread-safe logging function
@@ -254,7 +226,7 @@ function Get-WorkerScriptBlock {
                 [string]$ConnectionString,
                 [string]$TableName,
                 [string]$HostEmail,
-                [int]$MaxRecords = 1000
+                [int]$MaxRecords = 5000
             )
             
             $sql = @"
@@ -301,31 +273,62 @@ ORDER BY RECORDING_START DESC
             return $downloadPath
         }
 
-        # Function to update recording status in database
-        function Update-RecordingStatus {
+        # Function to perform batch database updates
+        function Update-DownloadStatusBatch {
             param(
                 [string]$ConnectionString,
                 [string]$TableName,
-                [string]$Guid,
-                [bool]$Downloaded,
-                [string]$DownloadPath = "",
-                [int]$TryDlAgain = 0
+                [array]$DownloadResults,
+                [int]$BatchSize = 100
             )
             
-            $downloadedValue = if ($Downloaded) { 1 } else { 0 }
-            $sql = @"
-UPDATE $TableName 
-SET DOWNLOADED = $downloadedValue,
-    DOWNLOAD_PATH = '$DownloadPath',
-    TRYDLAGAIN = $TryDlAgain
-WHERE GUID = '$Guid'
-"@
+            if ($DownloadResults.Count -eq 0) {
+                return $true
+            }
+            
+            Write-ThreadSafeLog "Performing batch update of $($DownloadResults.Count) records" -Color Cyan
             
             try {
-                Invoke-Sqlcmd -ConnectionString $ConnectionString -Query $sql -QueryTimeout 30
+                # Process in chunks to avoid huge transactions
+                
+                for ($i = 0; $i -lt $DownloadResults.Count; $i += $BatchSize) {
+                    $batch = $DownloadResults[$i..[Math]::Min($i + $BatchSize - 1, $DownloadResults.Count - 1)]
+                    # Build a batch UPDATE statement using CASE
+                    $whenClauses = @()
+                    $guidList = @()
+                    foreach ($result in $batch) {
+                        $guidList += "'$($result.Guid)'"
+                        $whenClauses += "WHEN '$($result.Guid)' THEN $($result.Downloaded)"
+                    }
+                    
+                    $downloadedCase = "CASE GUID " + ($whenClauses -join " ") + " END"
+                    # Similar for download path and retry count
+                    $pathClauses = @()
+                    $retryClauses = @()
+                    foreach ($result in $batch) {
+                        $escapedPath = $result.DownloadPath -replace "'", "''"  # Escape single quotes
+                        $pathClauses += "WHEN '$($result.Guid)' THEN '$escapedPath'"
+                        $retryClauses += "WHEN '$($result.Guid)' THEN $($result.TryDlAgain)"
+                    }                    
+
+                    
+                    $pathCase = "CASE GUID " + ($pathClauses -join " ") + " END"
+                    $retryCase = "CASE GUID " + ($retryClauses -join " ") + " END"
+                    
+                    $sql = @"
+UPDATE $TableName 
+SET DOWNLOADED = $downloadedCase,
+    DOWNLOAD_PATH = $pathCase,
+    TRYDLAGAIN = $retryCase
+WHERE GUID IN ($($guidList -join ','))
+"@
+                    Invoke-Sqlcmd -ConnectionString $ConnectionString -Query $sql -QueryTimeout 120
+                    Write-ThreadSafeLog "Batch updated $($batch.Count) records" -Color Green
+                }
+                
                 return $true
             } catch {
-                Write-ThreadSafeLog "Failed to update recording status for GUID $Guid`: $_" -Level "ERROR" -Color Red
+                Write-ThreadSafeLog "Batch update failed: $_" -Level "ERROR" -Color Red
                 return $false
             }
         }
@@ -362,7 +365,11 @@ WHERE GUID = '$Guid'
                             Write-ThreadSafeLog "Warning: Downloaded file size ($($fileInfo.Length)) doesn't match expected size ($ExpectedSize)" -Level "WARNING" -Color Yellow
                         }
                         
-                        return $true
+                        return @{
+                            Success = $true
+                            Message = "Download successful"
+                            Attempts = $retry
+                        }
                     } else {
                         throw "File was not created after download"
                     }
@@ -375,10 +382,18 @@ WHERE GUID = '$Guid'
                         
                         if ($statusCode -eq 401) {
                             Write-ThreadSafeLog "Authentication failed - token may be expired" -Level "ERROR" -Color Red
-                            return $false
+                            return @{
+                                Success = $false
+                                Message = "Authentication failed"
+                                Attempts = $retry
+                            }
                         } elseif ($statusCode -eq 404) {
                             Write-ThreadSafeLog "File not found - URL may be expired or invalid" -Level "ERROR" -Color Red
-                            return $false
+                            return @{
+                                Success = $false
+                                Message = "File not found"
+                                Attempts = $retry
+                            }
                         } elseif ($statusCode -eq 429) {
                             # Rate limited - exponential backoff
                             $waitTime = [math]::Pow(2, $retry) * 5
@@ -391,7 +406,11 @@ WHERE GUID = '$Guid'
                     
                     if ($retry -eq $MaxRetries) {
                         Write-ThreadSafeLog "Download failed after $MaxRetries attempts: $errorMessage" -Level "ERROR" -Color Red
-                        return $false
+                        return @{
+                            Success = $false
+                            Message = "Failed after $MaxRetries attempts: $errorMessage"
+                            Attempts = $retry
+                        }
                     }
                     
                     # Clean up partial download
@@ -403,10 +422,14 @@ WHERE GUID = '$Guid'
                 }
             }
             
-            return $false
+            return @{
+                Success = $false
+                Message = "Download failed"
+                Attempts = $MaxRetries
+            }
         }
         
-        # Function to process recordings for download
+        # Function to process recordings for download with batching
         function Process-RecordingsDownload {
             param(
                 [array]$Recordings,
@@ -422,6 +445,10 @@ WHERE GUID = '$Guid'
             $batchDownloaded = 0
             $batchSkipped = 0
             $batchErrors = 0
+            $downloadResults = @()
+            
+            # Performance tracking
+            $startTime = Get-Date
             
             try {
                 foreach ($recording in $Recordings) {
@@ -467,38 +494,76 @@ WHERE GUID = '$Guid'
                         # Download the file
                         Write-ThreadSafeLog "Starting download: $($recording.HOST_EMAIL) - $($recording.MEETING_ID) - $($recording.RECORDING_TYPE)"
                         
-                        $downloadSuccess = Download-Recording -DownloadUrl $recording.DOWNLOAD_URL -AccessToken $AccessToken -FilePath $filePath -ExpectedSize $recording.FILE_SIZE
+                        $downloadResult = Download-Recording -DownloadUrl $recording.DOWNLOAD_URL -AccessToken $AccessToken -FilePath $filePath -ExpectedSize $recording.FILE_SIZE
                         
-                        if ($downloadSuccess) {
-                            # Update database - mark as downloaded
-                            $updateSuccess = Update-RecordingStatus -ConnectionString $ConnectionString -TableName $TableName -Guid $recording.GUID -Downloaded $true -DownloadPath $filePath -TryDlAgain $recording.TRYDLAGAIN
-                            
-                            if ($updateSuccess) {
-                                $batchDownloaded++
-                                Write-ThreadSafeLog "Successfully downloaded and updated: $fileName" -Color Green
-                            } else {
-                                Write-ThreadSafeLog "Downloaded file but failed to update database: $fileName" -Level "WARNING" -Color Yellow
+                        # Collect result for batch update (success or failure)
+                        if ($downloadResult.Success) {
+                            $downloadResults += @{
+                                Guid = $recording.GUID
+                                Downloaded = 1
+                                DownloadPath = $filePath
+                                TryDlAgain = $recording.TRYDLAGAIN
                             }
+                            $batchDownloaded++
+                            Write-ThreadSafeLog "Successfully downloaded: $fileName" -Color Green
                         } else {
-                            # Update database - increment retry counter
+                            # Increment retry counter
                             $newRetryCount = $recording.TRYDLAGAIN + 1
-                            $updateSuccess = Update-RecordingStatus -ConnectionString $ConnectionString -TableName $TableName -Guid $recording.GUID -Downloaded $false -TryDlAgain $newRetryCount
+                            $downloadResults += @{
+                                Guid = $recording.GUID
+                                Downloaded = 0
+                                DownloadPath = ""
+                                TryDlAgain = $newRetryCount
+                            }
                             $batchErrors++
                             Write-ThreadSafeLog "Failed to download: $($recording.GUID) (Retry count: $newRetryCount)" -Level "ERROR" -Color Red
+                        }
+                        
+                        # Perform batch update when we reach batch size
+                        if ($downloadResults.Count -ge $BatchUpdateSize) {
+                            Write-ThreadSafeLog "Performing batch database update for $($downloadResults.Count) records" -Color Cyan
+                            $updateSuccess = Update-DownloadStatusBatch -ConnectionString $ConnectionString -TableName $TableName -DownloadResults $downloadResults
+                            if ($updateSuccess) {
+                                Write-ThreadSafeLog "Batch database update completed successfully" -Color Green
+                            } else {
+                                Write-ThreadSafeLog "Batch database update failed" -Level "ERROR" -Color Red
+                            }
+                            $downloadResults = @()  # Reset for next batch
                         }
                         
                     } catch {
                         Write-ThreadSafeLog "Error processing recording $($recording.GUID): $_" -Level "ERROR" -Color Red
                         
-                        # Update retry counter on error
+                        # Add error result to batch
                         $newRetryCount = $recording.TRYDLAGAIN + 1
-                        Update-RecordingStatus -ConnectionString $ConnectionString -TableName $TableName -Guid $recording.GUID -Downloaded $false -TryDlAgain $newRetryCount
+                        $downloadResults += @{
+                            Guid = $recording.GUID
+                            Downloaded = 0
+                            DownloadPath = ""
+                            TryDlAgain = $newRetryCount
+                        }
                         $batchErrors++
                     }
                     
                     # Add a small delay between downloads to be respectful
-                    Start-Sleep -Milliseconds 200
+                    Start-Sleep -Milliseconds 100  # Reduced for better performance
                 }
+                
+                # Process any remaining results in final batch
+                if ($downloadResults.Count -gt 0) {
+                    Write-ThreadSafeLog "Performing final batch database update for $($downloadResults.Count) records" -Color Cyan
+                    $updateSuccess = Update-DownloadStatusBatch -ConnectionString $ConnectionString -TableName $TableName -DownloadResults $downloadResults
+                    if ($updateSuccess) {
+                        Write-ThreadSafeLog "Final batch database update completed successfully" -Color Green
+                    } else {
+                        Write-ThreadSafeLog "Final batch database update failed" -Level "ERROR" -Color Red
+                    }
+                }
+                
+                # Performance summary for this thread
+                $duration = (Get-Date) - $startTime
+                $filesPerMinute = if ($duration.TotalMinutes -gt 0) { [math]::Round($batchProcessed / $duration.TotalMinutes, 1) } else { 0 }
+                Write-ThreadSafeLog "Thread performance: $filesPerMinute files/minute over $($duration.ToString('hh\:mm\:ss'))" -Color Magenta
                 
                 # Update final progress for this thread
                 Update-ThreadProgress -Processed $batchProcessed -Downloaded $batchDownloaded -Skipped $batchSkipped -Errors $batchErrors
@@ -514,9 +579,8 @@ WHERE GUID = '$Guid'
         # Main worker execution            
         try {
             Write-ThreadSafeLog "Thread started for account: $HostEmail"
-
             # Get recordings to download for this account
-            $recordingsToDownload = Get-RecordingsToDownload -ConnectionString $ConnectionString -TableName $TableName -HostEmail $HostEmail
+            $recordingsToDownload = Get-RecordingsToDownload -ConnectionString $ConnectionString -TableName $TableName -HostEmail $HostEmail -MaxRecords $MaxRecords
 
             Write-ThreadSafeLog "Account: $HostEmail, Found: $($recordingsToDownload.Count) recordings to download"
             
@@ -541,11 +605,14 @@ try {
     Write-ThreadSafeLog "Loading configuration using ZDAConfiguration module..."
     $config = Get-Configuration
     
-    # Extract configuration values
-    $MaxThreads = if ($config.runspaces.maxThreads) { $config.runspaces.maxThreads } else { 3 }
-    $BaseDownloadPath = if ($config.downloads.basepath) { $config.downloads.basepath } else { ".\Downloads" }
+    # Extract configuration values - OPTIMIZED FOR PERFORMANCE
+    $MaxThreads = if ($config.runspaces.maxThreads) { $config.runspaces.maxThreads } else { 10 }
+    $MaxRecordsPerThread = if ($config.runspaces.maxRecordsPerThread) { $config.runspaces.maxRecordsPerThread } else { 5000 }
+    $BatchUpdateSize = if ($config.runspaces.batchUpdateSize) { $config.runspaces.batchUpdateSize } else { 100 }
+    $BaseDownloadPath = if ($config.download.basepath) { $config.download.basepath } else { ".\Downloads" }
     
-    Write-ThreadSafeLog "Max Threads: $MaxThreads, Download Path: $BaseDownloadPath" -Color Cyan
+    Write-ThreadSafeLog "PERFORMANCE MODE: Max Threads: $MaxThreads, Records/Thread: $MaxRecordsPerThread, Batch Size: $BatchUpdateSize" -Color Cyan
+    Write-ThreadSafeLog "Download Path: $BaseDownloadPath" -Color Cyan
     
     # Ensure download directory exists
     if (-not (Test-Path $BaseDownloadPath)) {
@@ -576,6 +643,24 @@ ORDER BY HOST_EMAIL
     if (-not $hostEmails -or $hostEmails.Count -eq 0) {
         Write-ThreadSafeLog "No accounts found with recordings to download" -Color Yellow
         exit 0
+    }
+    
+    # Get total count for performance planning
+    $totalCountSql = @"
+SELECT COUNT(*) as Total
+FROM $($config.database.tableName) 
+WHERE DOWNLOADED = 0 
+    AND TRYDLAGAIN < 3
+    AND DOWNLOAD_URL IS NOT NULL 
+    AND DOWNLOAD_URL != ''
+"@
+    $totalFiles = (Invoke-Sqlcmd -ConnectionString $config.database.connectionString -Query $totalCountSql -QueryTimeout 120).Total
+    
+    Write-ThreadSafeLog "PERFORMANCE ANALYSIS:" -Color Magenta
+    Write-ThreadSafeLog "Total files to download: $totalFiles" -Color Magenta
+    if ($totalFiles -gt 0) {
+        Write-ThreadSafeLog "With $MaxThreads threads: $([math]::Round($totalFiles / $MaxThreads, 0)) files per thread average" -Color Magenta
+        Write-ThreadSafeLog "Expected database calls: ~$([math]::Round($totalFiles / $BatchUpdateSize, 0)) (was $totalFiles without batching)" -Color Magenta
     }
     
     # Handle resume functionality if configured
@@ -633,14 +718,16 @@ ORDER BY HOST_EMAIL
     # Create runspaces for each account
     $runspaces = @()
     $accountIndex = 0
-    
+    Write-ThreadSafeLog "Baselkfldfdkfdkjfdkfjdkdkfldfkdl download path: $BaseDownloadPath"
     foreach ($hostEmail in $hostEmails) {
-        $threadId = ($accountIndex % $MaxThreads) + 1  
+        # Calculate thread ID based on max threads (cycle through 1 to MaxThreads)
+        $threadId = ($accountIndex % $MaxThreads) + 1
+        
         Write-ThreadSafeLog "Starting thread $threadId for account: $hostEmail" -Color Yellow
         
         $powershell = [powershell]::Create()
         $powershell.RunspacePool = $runspacePool
-        
+                    
         # Add the script and parameters
         $null = $powershell.AddScript($workerScript)
         $null = $powershell.AddParameter("AccessToken", $accessToken)
@@ -649,6 +736,8 @@ ORDER BY HOST_EMAIL
         $null = $powershell.AddParameter("TableName", $config.database.tableName)
         $null = $powershell.AddParameter("BaseDownloadPath", $BaseDownloadPath)
         $null = $powershell.AddParameter("ThreadId", $threadId)
+        $null = $powershell.AddParameter("MaxRecords", $MaxRecordsPerThread)
+        $null = $powershell.AddParameter("BatchUpdateSize", $BatchUpdateSize)
         
         # Start the runspace
         $asyncResult = $powershell.BeginInvoke()
@@ -658,6 +747,7 @@ ORDER BY HOST_EMAIL
             AsyncResult = $asyncResult
             HostEmail = $hostEmail
             ThreadId = $threadId
+            AccountIndex = $accountIndex
             StartTime = Get-Date
         }
         
@@ -666,7 +756,7 @@ ORDER BY HOST_EMAIL
         $accountIndex++
 
         # Stagger thread starts to avoid overwhelming the API
-        Start-Sleep -Milliseconds 500
+        Start-Sleep -Milliseconds 200  # Reduced for faster startup
     }
     
     Write-ThreadSafeLog "All $($runspaces.Count) threads started. Monitoring progress..." -Color Cyan
@@ -683,6 +773,13 @@ ORDER BY HOST_EMAIL
             Write-ThreadSafeLog "Processed: $($currentProgress.Processed) | Downloaded: $($currentProgress.Downloaded) | Skipped: $($currentProgress.Skipped) | Errors: $($currentProgress.Errors)" -Color Cyan
             Write-ThreadSafeLog "Active Threads: $(($runspaces | Where-Object { -not $_.AsyncResult.IsCompleted }).Count)/$($runspaces.Count)" -Color Cyan
             Write-ThreadSafeLog "Runtime: $($progressTimer.Elapsed.ToString('hh\:mm\:ss'))" -Color Cyan
+            
+            # Calculate download rate
+            if ($currentProgress.Downloaded -gt 0 -and $progressTimer.Elapsed.TotalMinutes -gt 0) {
+                $downloadRate = [math]::Round($currentProgress.Downloaded / $progressTimer.Elapsed.TotalMinutes, 1)
+                Write-ThreadSafeLog "Download rate: $downloadRate files/minute" -Color Cyan
+            }
+            
             $lastProgressUpdate = Get-Date
         } 
         
@@ -734,6 +831,17 @@ ORDER BY HOST_EMAIL
     Write-ThreadSafeLog "Total files skipped (already downloaded/too many retries): $($finalProgress.Skipped)" -Color Yellow
     Write-ThreadSafeLog "Total errors: $($finalProgress.Errors)" -Color Red
     Write-ThreadSafeLog "Total runtime: $($progressTimer.Elapsed.ToString('hh\:mm\:ss'))" -Color Cyan
+    
+    # Performance summary
+    if ($finalProgress.Downloaded -gt 0 -and $progressTimer.Elapsed.TotalMinutes -gt 0) {
+        $avgDownloadRate = [math]::Round($finalProgress.Downloaded / $progressTimer.Elapsed.TotalMinutes, 1)
+        Write-ThreadSafeLog "Average download rate: $avgDownloadRate files/minute" -Color Cyan
+        
+        $estimatedDbCalls = [math]::Round($finalProgress.Downloaded / $BatchUpdateSize, 0)
+        $savedDbCalls = $finalProgress.Downloaded - $estimatedDbCalls
+        Write-ThreadSafeLog "Database optimization: ~$estimatedDbCalls calls (saved ~$savedDbCalls calls with batching)" -Color Cyan
+    }
+    
     Write-ThreadSafeLog "Download completed successfully!" -Color Green
     Write-ThreadSafeLog "Files downloaded to: $BaseDownloadPath" -Color Cyan
     
