@@ -289,21 +289,13 @@ WHERE GUID = '$Guid'
                     try {
                         Write-ThreadSafeLog "Uploading to S3 (attempt $retry/$MaxRetries): s3://$S3BucketName/$S3Key"
                         
-                        # Use AWS CLI for upload (assuming it's installed)
-                        $awsCmd = "aws s3 cp `"$FilePath`" `"s3://$S3BucketName/$S3Key`""
-                        $result = Invoke-Expression $awsCmd
-                        
-                        if ($LASTEXITCODE -eq 0) {
-                            Write-ThreadSafeLog "S3 upload completed: s3://$S3BucketName/$S3Key" -Color Green
-                            return @{
-                                Success = $true
-                                UploadPath = "s3://$S3BucketName/$S3Key"
-                                Message = "Upload successful"
-                            }
-                        } else {
-                            throw "AWS CLI returned exit code: $LASTEXITCODE"
+                        Write-S3Object -BucketName $S3BucketName -Key $S3Key -File $FilePath
+                        Write-ThreadSafeLog "S3 upload completed: s3://$S3BucketName/$S3Key" -Color Green
+                        return @{
+                            Success = $true
+                            UploadPath = "s3://$S3BucketName/$S3Key"
+                            Message = "Upload successful"
                         }
-                        
                     } catch {
                         Write-ThreadSafeLog "S3 upload failed (attempt $retry/$MaxRetries): $_" -Level "WARNING" -Color Yellow
                         if ($retry -eq $MaxRetries) {

@@ -560,7 +560,7 @@ function Create-StorageSelectionPage {
         $pnlS3.Visible = $true
         $pnlLocal.Visible = $false
         $pnlOneDrive.Visible = $false
-        $script:txtAccessKey.Text = $user_config.upload.s3.accessKey
+        $script:txtAccessKey.Text = $user_config.upload.s3.accessKeyId
         $script:txtSecretKey.Text = $user_config.upload.s3.secretAccessKey
         $script:txtBucket.Text = $user_config.upload.s3.bucketName
         $script:cmbRegion.SelectedItem = $user_config.upload.s3.region
@@ -1238,7 +1238,7 @@ $btnFinish.Add_Click({
             $storageConfig = @{
                 provider = $global:Config.Storage.Type
                 s3 = @{
-                    accessKey = $global:Config.Storage.AccessKey
+                    accessKeyId = $global:Config.Storage.AccessKey
                     secretAccessKey = $global:Config.Storage.SecretAccessKey
                     bucketName = $global:Config.Storage.Bucket
                     region = $global:Config.Storage.Region
