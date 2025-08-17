@@ -310,10 +310,7 @@ class SQLServerDatabase : AbstractDatabase {
             DOWNLOAD_PATH NVARCHAR(255),
             UPLOADED BIT,
             UPLOAD_PATH NVARCHAR(255),
-            UPLOAD_STARTED DATETIME2 NULL,
             UPLOAD_COMPLETED DATETIME2 NULL,
-            UPLOAD_THREAD INT NULL,
-            UPLOAD_MESSAGE NVARCHAR(MAX) NULL
         )
 "@
         #Write-Host("Query:$mainTableSQL")
