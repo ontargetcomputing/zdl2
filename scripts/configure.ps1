@@ -557,23 +557,23 @@ function Create-StorageSelectionPage {
         if ($this.Checked) { $parentPanel.Controls["pnlS3"].BringToFront() }
     })
 
-    if($user_config.storage.type -eq "S3") {
+    if($user_config.upload.provider -eq "S3") {
         $radioS3.Checked = $true
         $pnlS3.Visible = $true
         $pnlLocal.Visible = $false
         $pnlOneDrive.Visible = $false
-        $script:txtAccessKey.Text = $user_config.storage.accessKey
-        $script:txtSecretKey.Text = $user_config.storage.secretAccessKey
-        $script:txtBucket.Text = $user_config.storage.bucketName
-        $script:cmbRegion.SelectedItem = $user_config.storage.region
-    } elseif($user_config.storage.type -eq "OneDrive") {
+        $script:txtAccessKey.Text = $user_config.upload.s3.accessKey
+        $script:txtSecretKey.Text = $user_config.upload.s3.secretAccessKey
+        $script:txtBucket.Text = $user_config.upload.s3.bucketName
+        $script:cmbRegion.SelectedItem = $user_config.upload.s3.region
+    } elseif($user_config.upload.provider -eq "OneDrive") {
         $radioOneDrive.Checked = $true
         $pnlOneDrive.Visible = $true
         $pnlLocal.Visible = $false
         $pnlS3.Visible = $false
-        $script:txtAppId.Text = $user_config.storage.appId
-        $script:txtClientSecret.Text = $user_config.storage.clientSecret
-        $script:txtTenantName.Text = $user_config.storage.tenantName
+        $script:txtAppId.Text = $user_config.upload.onedrive.appId
+        $script:txtClientSecret.Text = $user_config.upload.onedrive.clientSecret
+        $script:txtTenantName.Text = $user_config.upload.onedrive.tenantName
     } else {
         # Default to Local Storage
         $radioLocal.Checked = $true
@@ -1225,26 +1225,31 @@ $btnFinish.Add_Click({
         $type = $global:Config.Storage.Type
         if( $type -eq 'Local' ) {
             $storageConfig = @{
-                type = $global:Config.Storage.Type
+                provider = $global:Config.Storage.Type
             }             
         } elseif( $type -eq 'OneDrive' ) {
             $storageConfig = @{
-                type = $global:Config.Storage.Type
-
-                appId = $global:Config.Storage.AppId
-                clientSecret = $global:Config.Storage.ClientSecret
-                tenantName = $global:Config.Storage.TenantName
+                provider = $global:Config.Storage.Type
+                onedrive = @{
+                    clientId = $global:Config.Storage.AppId
+                    clientSecret = $global:Config.Storage.ClientSecret
+                    tenantId = $global:Config.Storage.TenantName
+                }
             }             
         } else {
             $storageConfig = @{
-                type = $global:Config.Storage.Type
-                accessKey = $global:Config.Storage.AccessKey
-                secretAccessKey = $global:Config.Storage.SecretAccessKey
-                bucketName = $global:Config.Storage.Bucket
-                region = $global:Config.Storage.Region
+                provider = $global:Config.Storage.Type
+                s3 = @{
+                    accessKey = $global:Config.Storage.AccessKey
+                    secretAccessKey = $global:Config.Storage.SecretAccessKey
+                    bucketName = $global:Config.Storage.Bucket
+                    region = $global:Config.Storage.Region
+                    multipartThreshold = 100000000
+                    maxConcurrency = 10
+                }
             }               
         }
-
+  
         $databaseConfig = @{
             server = $global:Config.Database.Server
             port = $global:Config.Database.Port
@@ -1267,25 +1272,24 @@ $btnFinish.Add_Click({
         $accounts = $global:Config.Accounts -join "`r`n"
 
         $runspaces = @{
-            batchSize = 2
-            maxThreads = 10
+            batchSize = 200
+            maxThreads = 25
+            maxRecordsPerThread = 5000
+            uploadDelayMs = 100
         }
 
         $downloads = @{
-            maxConcurrentDownloads = 3
-            downloadRetryCount = 5
-            downloadTimeout = 300
             basepath = $configuration.GetDownloadsDirectoryPath()
         }
 
         $config = @{
             zoom     = $zoomConfig
-            storage  = $storageConfig
+            upload  = $storageConfig
             database = $databaseConfig
             schedule = $schedule
             accounts = $accounts
             runspaces = $runspaces
-            downloads = $downloads
+            download = $downloads
         }
 
 
