@@ -387,10 +387,7 @@ function Get-WorkerScriptBlock {
             $dataTable.Columns.Add('DOWNLOAD_PATH', [string]) | Out-Null
             $dataTable.Columns.Add('UPLOADED', [bool]) | Out-Null
             $dataTable.Columns.Add('UPLOAD_PATH', [string]) | Out-Null
-            $dataTable.Columns.Add('UPLOAD_STARTED', [datetime]) | Out-Null
             $dataTable.Columns.Add('UPLOAD_COMPLETED', [datetime]) | Out-Null
-            $dataTable.Columns.Add('UPLOAD_THREAD', [string]) | Out-Null
-            $dataTable.Columns.Add('UPLOAD_MESSAGE', [string]) | Out-Null
 
             $batchProcessed = 0
             $batchInserted = 0
@@ -432,10 +429,7 @@ function Get-WorkerScriptBlock {
                         $row['DOWNLOAD_PATH'] = ""
                         $row['UPLOADED'] = 0
                         $row['UPLOAD_PATH'] = ""
-                        $row['UPLOAD_STARTED'] = [System.DBNull]::Value
                         $row['UPLOAD_COMPLETED'] = [System.DBNull]::Value
-                        $row['UPLOAD_THREAD'] = [System.DBNull]::Value
-                        $row['UPLOAD_MESSAGE'] = [System.DBNull]::Value
                         
                         
                         $dataTable.Rows.Add($row)
