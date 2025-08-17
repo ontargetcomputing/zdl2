@@ -83,40 +83,6 @@ function Get-Configuration {
     }
 }
 
-# Function to get recordings to upload from database per account
-function Get-RecordingsToUpload {
-    param(
-        [string]$ConnectionString,
-        [string]$TableName,
-        [string]$HostEmail,
-        [int]$MaxRecords = 1000
-    )
-    
-    $sql = @"
-SELECT TOP ($MaxRecords) 
-    GUID, HOST_EMAIL, RECORDING_START, RECORDING_END, FILE_SIZE, 
-    DOWNLOAD_URL, MEETING_ID, TOPIC, RECORDING_TYPE, DOWNLOADED, 
-    DOWNLOAD_PATH, UPLOADED, UPLOAD_PATH, UPLOAD_STARTED, UPLOAD_COMPLETED,
-    UPLOAD_THREAD, UPLOAD_MESSAGE
-FROM $TableName 
-WHERE HOST_EMAIL = '$HostEmail' 
-    AND DOWNLOADED = 1 
-    AND UPLOADED = 0
-    AND DOWNLOAD_PATH IS NOT NULL 
-    AND DOWNLOAD_PATH != ''
-ORDER BY RECORDING_START DESC
-"@
-    
-    try {
-        $recordings = Invoke-Sqlcmd -ConnectionString $ConnectionString -Query $sql -QueryTimeout 120
-        Write-ThreadSafeLog "Found $($recordings.Count) recordings to upload for $HostEmail" -Color Cyan
-        return $recordings
-    } catch {
-        Write-ThreadSafeLog "Failed to get recordings for $HostEmail`: $_" -Level "ERROR" -Color Red
-        return @()
-    }
-}
-
 # Function to create the main script block for runspace execution
 function Get-WorkerScriptBlock {
     return {
@@ -174,8 +140,7 @@ function Get-WorkerScriptBlock {
 SELECT TOP ($MaxRecords) 
     GUID, HOST_EMAIL, RECORDING_START, RECORDING_END, FILE_SIZE, 
     DOWNLOAD_URL, MEETING_ID, TOPIC, RECORDING_TYPE, DOWNLOADED, 
-    DOWNLOAD_PATH, UPLOADED, UPLOAD_PATH, UPLOAD_STARTED, UPLOAD_COMPLETED,
-    UPLOAD_THREAD, UPLOAD_MESSAGE
+    DOWNLOAD_PATH, UPLOADED, UPLOAD_PATH, UPLOAD_COMPLETED
 FROM $TableName 
 WHERE HOST_EMAIL = '$HostEmail' 
     AND DOWNLOADED = 1 
@@ -184,7 +149,7 @@ WHERE HOST_EMAIL = '$HostEmail'
     AND DOWNLOAD_PATH != ''
 ORDER BY RECORDING_START DESC
 "@
-            
+            #Write-ThreadSafeLog "Executing SQL query to get recordings $sql" -Color Yellow
             try {
                 $recordings = Invoke-Sqlcmd -ConnectionString $ConnectionString -Query $sql -QueryTimeout 120
                 Write-ThreadSafeLog "Found $($recordings.Count) recordings to upload for $HostEmail" -Color Cyan
