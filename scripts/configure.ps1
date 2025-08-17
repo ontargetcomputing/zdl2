@@ -507,14 +507,12 @@ function Create-StorageSelectionPage {
         $script:lblS3Status.ForeColor = [System.Drawing.Color]::Blue
         $form.Update()
         
-        try {
-            $s3FileStorage = [S3FileStorage]::new(
-                $script:txtAccessKey.Text.Trim(),
-                $script:txtSecretKey.Text.Trim(),
-                $script:txtBucket.Text.Trim(),
-                $script:cmbRegion.SelectedItem
-            )
-            $s3FileStorage.Authenticate()
+        try {                        
+            # Test 1: Verify credentials are valid
+            Write-Host "1. Checking credential validity..." -ForegroundColor Cyan
+            Get-STSCallerIdentity -AccessKey $script:txtAccessKey.Text.Trim() -SecretKey $script:txtSecretKey.Text.Trim()
+
+
             Write-Host "INFO: S3 Authentication successful."
             $script:lblS3Status.Text = "S3 Authentication successful"
             $script:lblS3Status.ForeColor = [System.Drawing.Color]::Green
@@ -571,9 +569,9 @@ function Create-StorageSelectionPage {
         $pnlOneDrive.Visible = $true
         $pnlLocal.Visible = $false
         $pnlS3.Visible = $false
-        $script:txtAppId.Text = $user_config.upload.onedrive.appId
+        $script:txtAppId.Text = $user_config.upload.onedrive.clientId
         $script:txtClientSecret.Text = $user_config.upload.onedrive.clientSecret
-        $script:txtTenantName.Text = $user_config.upload.onedrive.tenantName
+        $script:txtTenantName.Text = $user_config.upload.onedrive.tenantId
     } else {
         # Default to Local Storage
         $radioLocal.Checked = $true
