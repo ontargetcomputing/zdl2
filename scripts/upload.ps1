@@ -117,42 +117,6 @@ ORDER BY RECORDING_START DESC
     }
 }
 
-# Function to update recording upload status in database
-function Update-UploadStatus {
-    param(
-        [string]$ConnectionString,
-        [string]$TableName,
-        [string]$Guid,
-        [bool]$Uploaded,
-        [string]$UploadPath = "",
-        [string]$UploadThread = "",
-        [string]$UploadMessage = ""
-    )
-    
-    $uploadedValue = if ($Uploaded) { 1 } else { 0 }
-    $uploadStarted = if ($Uploaded) { "NULL" } else { "GETDATE()" }
-    $uploadCompleted = if ($Uploaded) { "GETDATE()" } else { "NULL" }
-    
-    $sql = @"
-UPDATE $TableName 
-SET UPLOADED = $uploadedValue,
-    UPLOAD_PATH = '$UploadPath',
-    UPLOAD_STARTED = $uploadStarted,
-    UPLOAD_COMPLETED = $uploadCompleted,
-    UPLOAD_THREAD = '$UploadThread',
-    UPLOAD_MESSAGE = '$UploadMessage'
-WHERE GUID = '$Guid'
-"@
-    
-    try {
-        Invoke-Sqlcmd -ConnectionString $ConnectionString -Query $sql -QueryTimeout 30
-        return $true
-    } catch {
-        Write-ThreadSafeLog "Failed to update upload status for GUID $Guid`: $_" -Level "ERROR" -Color Red
-        return $false
-    }
-}
-
 # Function to create the main script block for runspace execution
 function Get-WorkerScriptBlock {
     return {
@@ -228,42 +192,6 @@ ORDER BY RECORDING_START DESC
             } catch {
                 Write-ThreadSafeLog "Failed to get recordings for $HostEmail`: $_" -Level "ERROR" -Color Red
                 return @()
-            }
-        }
-
-        # Function to update recording upload status in database
-        function Update-UploadStatus {
-            param(
-                [string]$ConnectionString,
-                [string]$TableName,
-                [string]$Guid,
-                [bool]$Uploaded,
-                [string]$UploadPath = "",
-                [string]$UploadThread = "",
-                [string]$UploadMessage = ""
-            )
-            
-            $uploadedValue = if ($Uploaded) { 1 } else { 0 }
-            $uploadStarted = if ($Uploaded) { "NULL" } else { "GETDATE()" }
-            $uploadCompleted = if ($Uploaded) { "GETDATE()" } else { "NULL" }
-            
-            $sql = @"
-UPDATE $TableName 
-SET UPLOADED = $uploadedValue,
-    UPLOAD_PATH = '$UploadPath',
-    UPLOAD_STARTED = $uploadStarted,
-    UPLOAD_COMPLETED = $uploadCompleted,
-    UPLOAD_THREAD = '$UploadThread',
-    UPLOAD_MESSAGE = '$UploadMessage'
-WHERE GUID = '$Guid'
-"@
-            
-            try {
-                Invoke-Sqlcmd -ConnectionString $ConnectionString -Query $sql -QueryTimeout 30
-                return $true
-            } catch {
-                Write-ThreadSafeLog "Failed to update upload status for GUID $Guid`: $_" -Level "ERROR" -Color Red
-                return $false
             }
         }
 
@@ -505,8 +433,21 @@ WHERE GUID = '$Guid'
                     # Similar for upload path
                     $pathClauses = @()
                     
+
+                   foreach ($result in $batch) {
+                        $escapedPath = $result.UploadPath -replace "'", "''"  # Escape single quotes
+                        $pathClauses += "WHEN '$($result.Guid)' THEN '$escapedPath'"
+                        $retryClauses += "WHEN '$($result.Guid)' THEN $($result.TryDlAgain)"
+                    }                    
+
+                    
+                    $pathCase = "CASE GUID " + ($pathClauses -join " ") + " END"
+                    $retryCase = "CASE GUID " + ($retryClauses -join " ") + " END"
+
+                    
                     foreach ($result in $batch) {
-                        $pathClauses += "WHEN '$($result.Guid)' THEN '$($result.UploadPath)'"
+                        $escapedPath = $result.UploadPath -replace "'", "''"  # Escape single quotes
+                        $pathClauses += "WHEN '$($result.Guid)' THEN '$escapedPath'"
                     }
                     
                     $pathCase = "CASE GUID " + ($pathClauses -join " ") + " END"
@@ -518,7 +459,7 @@ SET UPLOADED = $uploadedCase,
     UPLOAD_COMPLETED = CASE WHEN $uploadedCase = 1 THEN GETDATE() ELSE NULL END
 WHERE GUID IN ($($guidList -join ','))
 "@
-                    
+
                     Invoke-Sqlcmd -ConnectionString $ConnectionString -Query $sql -QueryTimeout 120
                     Write-ThreadSafeLog "Batch updated $($batch.Count) records" -Color Green
                 }
@@ -577,6 +518,7 @@ WHERE GUID IN ($($guidList -join ','))
                         $uploadResult = Upload-Recording -FilePath $recording.DOWNLOAD_PATH -UploadConfig $UploadConfig -HostEmail $recording.HOST_EMAIL -MeetingId $recording.MEETING_ID -RecordingStart $recordingStart -RecordingType $recording.RECORDING_TYPE
                         
                         # Collect result for batch update (simplified)
+                        #Write-ThreadSafeLog "Success: $($uploadResult.Success), Path: $($uploadResult.UploadPath), Message: $($uploadResult.Message)"
                         $uploadResults += @{
                             Guid = $recording.GUID
                             Uploaded = if ($uploadResult.Success) { 1 } else { 0 }
