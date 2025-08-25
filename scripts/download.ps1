@@ -692,19 +692,20 @@ WHERE DOWNLOADED = 0
     # Get the worker script block
     $workerScript = Get-WorkerScriptBlock
     
-    # Create runspaces for each account
+    # Create runspaces for each account, reusing thread IDs
     $runspaces = @()
-    $accountIndex = 0
-    foreach ($hostEmail in $hostEmails) {
-        # Calculate thread ID based on max threads (cycle through 1 to MaxThreads)
-        $threadId = ($accountIndex % $MaxThreads) + 1
-        
+    $availableThreadIds = [System.Collections.Queue]::new()
+    for ($i = 1; $i -le $MaxThreads; $i++) { $availableThreadIds.Enqueue($i) }
+    $accountsQueue = [System.Collections.Queue]::new()
+    foreach ($hostEmail in $hostEmails) { $accountsQueue.Enqueue($hostEmail) }
+
+    # Start initial runspaces up to MaxThreads
+    while ($runspaces.Count -lt $MaxThreads -and $accountsQueue.Count -gt 0) {
+        $threadId = $availableThreadIds.Dequeue()
+        $hostEmail = $accountsQueue.Dequeue()
         Write-ThreadSafeLog "Starting thread $threadId for account: $hostEmail" -Color Yellow
-        
         $powershell = [powershell]::Create()
         $powershell.RunspacePool = $runspacePool
-                    
-        # Add the script and parameters
         $null = $powershell.AddScript($workerScript)
         $null = $powershell.AddParameter("AccessToken", $accessToken)
         $null = $powershell.AddParameter("HostEmail", $hostEmail)
@@ -715,25 +716,70 @@ WHERE DOWNLOADED = 0
         $null = $powershell.AddParameter("MaxRecords", $MaxRecordsPerThread)
         $null = $powershell.AddParameter("BatchUpdateSize", $BatchUpdateSize)
         $null = $powershell.AddParameter("Sync", $sync)
-
-        # Start the runspace
         $asyncResult = $powershell.BeginInvoke()
-        
         $runspaceInfo = [PSCustomObject]@{
             PowerShell = $powershell
             AsyncResult = $asyncResult
             HostEmail = $hostEmail
             ThreadId = $threadId
-            AccountIndex = $accountIndex
             StartTime = Get-Date
         }
-        
-        $runspaces += $runspaceInfo        
-        Write-ThreadSafeLog "Started thread for account: $hostEmail (Thread ID: $threadId, Account Index: $accountIndex)" -Color Yellow
-        $accountIndex++
+        $runspaces += $runspaceInfo
+        Write-ThreadSafeLog "Started thread $threadId for account: $hostEmail" -Color Yellow
+        Start-Sleep -Milliseconds 200
+    }
 
-        # Stagger thread starts to avoid overwhelming the API
-        Start-Sleep -Milliseconds 200  # Reduced for faster startup
+    # Monitor and start new runspaces as threads become available
+    while ($runspaces.Count -gt 0 -or $accountsQueue.Count -gt 0) {
+        # Check for completed runspaces
+        $completedRunspaces = $runspaces | Where-Object { $_.AsyncResult.IsCompleted -and $_.PowerShell }
+        foreach ($completed in $completedRunspaces) {
+            Write-ThreadSafeLog "Processing completed thread $($completed.ThreadId) for account: $($completed.HostEmail)" -Color Green
+            try {
+                $result = $completed.PowerShell.EndInvoke($completed.AsyncResult)
+                $duration = (Get-Date) - $completed.StartTime
+                Write-ThreadSafeLog "Thread $($completed.ThreadId) completed for account: $($completed.HostEmail) (Duration: $($duration.ToString('mm\:ss')))" -Color Green
+            } catch {
+                Write-ThreadSafeLog "Thread $($completed.ThreadId) error for account $($completed.HostEmail): $_" -Level "ERROR" -Color Red
+            } finally {
+                $completed.PowerShell.Dispose()
+                $completed.PowerShell = $null
+                # Return threadId to pool
+                $availableThreadIds.Enqueue($completed.ThreadId)
+                # Remove from runspaces
+                $runspaces = $runspaces | Where-Object { $_ -ne $completed }
+            }
+        }
+        # Start new runspaces if threads are available and accounts remain
+        while ($availableThreadIds.Count -gt 0 -and $accountsQueue.Count -gt 0) {
+            $threadId = $availableThreadIds.Dequeue()
+            $hostEmail = $accountsQueue.Dequeue()
+            Write-ThreadSafeLog "Starting thread $threadId for account: $hostEmail" -Color Yellow
+            $powershell = [powershell]::Create()
+            $powershell.RunspacePool = $runspacePool
+            $null = $powershell.AddScript($workerScript)
+            $null = $powershell.AddParameter("AccessToken", $accessToken)
+            $null = $powershell.AddParameter("HostEmail", $hostEmail)
+            $null = $powershell.AddParameter("ConnectionString", $config.database.connectionString)
+            $null = $powershell.AddParameter("TableName", $config.database.tableName)
+            $null = $powershell.AddParameter("BaseDownloadPath", $BaseDownloadPath)
+            $null = $powershell.AddParameter("ThreadId", $threadId)
+            $null = $powershell.AddParameter("MaxRecords", $MaxRecordsPerThread)
+            $null = $powershell.AddParameter("BatchUpdateSize", $BatchUpdateSize)
+            $null = $powershell.AddParameter("Sync", $sync)
+            $asyncResult = $powershell.BeginInvoke()
+            $runspaceInfo = [PSCustomObject]@{
+                PowerShell = $powershell
+                AsyncResult = $asyncResult
+                HostEmail = $hostEmail
+                ThreadId = $threadId
+                StartTime = Get-Date
+            }
+            $runspaces += $runspaceInfo
+            Write-ThreadSafeLog "Started thread $threadId for account: $hostEmail" -Color Yellow
+            Start-Sleep -Milliseconds 200
+        }
+        Start-Sleep -Milliseconds 500
     }
     
     Write-ThreadSafeLog "All $($runspaces.Count) threads started. Monitoring progress..." -Color Cyan
