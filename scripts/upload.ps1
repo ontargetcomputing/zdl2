@@ -12,12 +12,6 @@ foreach ($module in $requiredModules) {
     }
 }
 
-# Global variables for progress tracking
-$script:TotalProcessed = 0
-$script:TotalUploaded = 0
-$script:TotalSkipped = 0
-$script:TotalErrors = 0
-$script:ProgressMutex = [System.Threading.Mutex]::new($false)
 $script:LogMutex = [System.Threading.Mutex]::new($false)
 
 # Function to write thread-safe log messages
@@ -39,30 +33,6 @@ function Write-ThreadSafeLog {
         Add-Content -Path $logFile -Value $logMessage
     } finally {
         $script:LogMutex.ReleaseMutex()
-    }
-}
-
-# Function to update progress in thread-safe manner
-function Update-Progress {
-    param(
-        [int]$Processed = 0,
-        [int]$Uploaded = 0,
-        [int]$Skipped = 0,
-        [int]$Errors = 0
-    )
-    
-    $script:ProgressMutex.WaitOne() | Out-Null
-    try {
-        $script:TotalProcessed += $Processed
-        $script:TotalUploaded += $Uploaded
-        $script:TotalSkipped += $Skipped
-        $script:TotalErrors += $Errors
-        
-        if (($script:TotalProcessed % 10) -eq 0 -or $Processed -gt 0) {
-            Write-ThreadSafeLog "Progress: Processed=$($script:TotalProcessed), Uploaded=$($script:TotalUploaded), Skipped=$($script:TotalSkipped), Errors=$($script:TotalErrors)" -Level "PROGRESS" -Color Cyan
-        }
-    } finally {
-        $script:ProgressMutex.ReleaseMutex()
     }
 }
 
@@ -91,7 +61,8 @@ function Get-WorkerScriptBlock {
             $ConnectionString,
             $TableName,
             $UploadConfig,
-            $ThreadId
+            $ThreadId,
+            $Sync
         )
         
         # Thread-safe logging function
@@ -120,11 +91,16 @@ function Get-WorkerScriptBlock {
                 [int]$Skipped = 0,
                 [int]$Errors = 0
             )
-            
-            $sync.Progress.Processed += $Processed
-            $sync.Progress.Uploaded += $Uploaded
-            $sync.Progress.Skipped += $Skipped
-            $sync.Progress.Errors += $Errors
+            try {
+                $Sync.Progress.Processed += $Processed
+                $Sync.Progress.Uploaded += $Uploaded
+                $Sync.Progress.Skipped += $Skipped
+                $Sync.Progress.Errors += $Errors
+                if (($Sync.Progress.Processed % 100) -eq 0 -or $Processed -gt 0) {
+                    Write-ThreadSafeLog "Progress: Processed=$($Sync.Progress.Processed), Uploaded=$($Sync.Progress.Uploaded), Skipped=$($Sync.Progress.Skipped), Errors=$($Sync.Progress.Errors)" -Level "PROGRESS" -Color Cyan
+                }
+            } finally {
+            }
         }
 
         # Function to get recordings to upload from database per account
@@ -718,7 +694,8 @@ WHERE DOWNLOADED = 1
         $null = $powershell.AddParameter("ThreadId", $threadId)
         $null = $powershell.AddParameter("MaxRecords", $MaxRecordsPerThread)
         $null = $powershell.AddParameter("BatchUpdateSize", $BatchUpdateSize)
-        
+        $null = $powershell.AddParameter("Sync", $sync)
+
         # Start the runspace
         $asyncResult = $powershell.BeginInvoke()
         
