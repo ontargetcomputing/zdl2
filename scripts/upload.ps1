@@ -617,11 +617,6 @@ WHERE DOWNLOADED = 1
 "@
     $totalFiles = (Invoke-Sqlcmd -ConnectionString $config.database.connectionString -Query $totalCountSql -QueryTimeout 120).Total
     
-    Write-ThreadSafeLog "PERFORMANCE ANALYSIS:" -Color Magenta
-    Write-ThreadSafeLog "Total files to upload: $totalFiles" -Color Magenta
-    Write-ThreadSafeLog "Target: 7 days = $([math]::Round($totalFiles / (7 * 24), 0)) files/hour required" -Color Magenta
-    Write-ThreadSafeLog "With $MaxThreads threads: $([math]::Round($totalFiles / ($MaxThreads * 7 * 24), 1)) files/hour per thread" -Color Magenta
-    
     # Handle resume functionality if configured
     $ResumeFromAccount = $null
     if ($config.resume -and $config.resume.fromAccount) {
@@ -675,17 +670,21 @@ WHERE DOWNLOADED = 1
     $workerScript = Get-WorkerScriptBlock
     
     # Create runspaces for each account
+
+    # Refactored: Reuse thread IDs and log files, only MaxThreads log files created and reused
     $runspaces = @()
-    $accountIndex = 0
-    
-    foreach ($hostEmail in $hostEmails) {
-        $threadId = ($accountIndex % $MaxThreads) + 1  
+    $availableThreadIds = [System.Collections.Queue]::new()
+    for ($i = 1; $i -le $MaxThreads; $i++) { $availableThreadIds.Enqueue($i) }
+    $accountsQueue = [System.Collections.Queue]::new()
+    foreach ($hostEmail in $hostEmails) { $accountsQueue.Enqueue($hostEmail) }
+
+    # Start initial runspaces up to MaxThreads
+    while ($runspaces.Count -lt $MaxThreads -and $accountsQueue.Count -gt 0) {
+        $threadId = $availableThreadIds.Dequeue()
+        $hostEmail = $accountsQueue.Dequeue()
         Write-ThreadSafeLog "Starting thread $threadId for account: $hostEmail" -Color Yellow
-        
         $powershell = [powershell]::Create()
         $powershell.RunspacePool = $runspacePool
-        
-        # Add the script and parameters
         $null = $powershell.AddScript($workerScript)
         $null = $powershell.AddParameter("HostEmail", $hostEmail)
         $null = $powershell.AddParameter("ConnectionString", $config.database.connectionString)
@@ -695,10 +694,7 @@ WHERE DOWNLOADED = 1
         $null = $powershell.AddParameter("MaxRecords", $MaxRecordsPerThread)
         $null = $powershell.AddParameter("BatchUpdateSize", $BatchUpdateSize)
         $null = $powershell.AddParameter("Sync", $sync)
-
-        # Start the runspace
         $asyncResult = $powershell.BeginInvoke()
-        
         $runspaceInfo = [PSCustomObject]@{
             PowerShell = $powershell
             AsyncResult = $asyncResult
@@ -706,57 +702,79 @@ WHERE DOWNLOADED = 1
             ThreadId = $threadId
             StartTime = Get-Date
         }
-        
-        $runspaces += $runspaceInfo        
-        Write-ThreadSafeLog "Started thread for account: $hostEmail (Thread ID: $threadId, Account Index: $accountIndex)" -Color Yellow
-        $accountIndex++
-
-        # Stagger thread starts to avoid overwhelming the services
-        Start-Sleep -Milliseconds 200  # Reduced from 1000ms for faster startup
+        $runspaces += $runspaceInfo
+        Write-ThreadSafeLog "Started thread $threadId for account: $hostEmail" -Color Yellow
+        Start-Sleep -Milliseconds 200
     }
-    
+
     Write-ThreadSafeLog "All $($runspaces.Count) threads started. Monitoring progress..." -Color Cyan
-    
-    # Monitor progress and collect logs
+
+    # Monitor and start new runspaces as threads become available
     $progressTimer = [System.Diagnostics.Stopwatch]::StartNew()
     $lastProgressUpdate = Get-Date
-    
-    do {
+    while ($runspaces.Count -gt 0 -or $accountsQueue.Count -gt 0) {
         # Update progress every 30 seconds
         if ((Get-Date) - $lastProgressUpdate -gt [TimeSpan]::FromSeconds(30)) {
             $currentProgress = $sync.Progress
             Write-ThreadSafeLog "=== PROGRESS UPDATE ===" -Color Cyan
             Write-ThreadSafeLog "Processed: $($currentProgress.Processed) | Uploaded: $($currentProgress.Uploaded) | Skipped: $($currentProgress.Skipped) | Errors: $($currentProgress.Errors)" -Color Cyan
-            Write-ThreadSafeLog "Active Threads: $(($runspaces | Where-Object { -not $_.AsyncResult.IsCompleted }).Count)/$($runspaces.Count)" -Color Cyan
+            Write-ThreadSafeLog "Active Threads: $(($runspaces | Where-Object { -not $_.AsyncResult.IsCompleted }).Count)/$MaxThreads" -Color Cyan
             Write-ThreadSafeLog "Runtime: $($progressTimer.Elapsed.ToString('hh\:mm\:ss'))" -Color Cyan
             $lastProgressUpdate = Get-Date
-        } 
-        
-        # Check if any runspaces completed
+        }
+        # Check for completed runspaces
         $completedRunspaces = $runspaces | Where-Object { $_.AsyncResult.IsCompleted -and $_.PowerShell }
         foreach ($completed in $completedRunspaces) {
             Write-ThreadSafeLog "Processing completed thread $($completed.ThreadId) for account: $($completed.HostEmail)" -Color Green
             try {
-                # Get any results/errors from the completed runspace
                 $result = $completed.PowerShell.EndInvoke($completed.AsyncResult)
                 $duration = (Get-Date) - $completed.StartTime
                 Write-ThreadSafeLog "Thread $($completed.ThreadId) completed for account: $($completed.HostEmail) (Duration: $($duration.ToString('mm\:ss')))" -Color Green
             } catch {
                 Write-ThreadSafeLog "Thread $($completed.ThreadId) error for account $($completed.HostEmail): $_" -Level "ERROR" -Color Red
             } finally {
-                # Cleanup
                 $completed.PowerShell.Dispose()
                 $completed.PowerShell = $null
+                # Return threadId to pool
+                $availableThreadIds.Enqueue($completed.ThreadId)
+                # Remove from runspaces
+                $runspaces = $runspaces | Where-Object { $_ -ne $completed }
             }
         }
-
-        # Short sleep to prevent excessive CPU usage
+        # Start new runspaces if threads are available and accounts remain
+        while ($availableThreadIds.Count -gt 0 -and $accountsQueue.Count -gt 0) {
+            $threadId = $availableThreadIds.Dequeue()
+            $hostEmail = $accountsQueue.Dequeue()
+            Write-ThreadSafeLog "Starting thread $threadId for account: $hostEmail" -Color Yellow
+            $powershell = [powershell]::Create()
+            $powershell.RunspacePool = $runspacePool
+            $null = $powershell.AddScript($workerScript)
+            $null = $powershell.AddParameter("HostEmail", $hostEmail)
+            $null = $powershell.AddParameter("ConnectionString", $config.database.connectionString)
+            $null = $powershell.AddParameter("TableName", $config.database.tableName)
+            $null = $powershell.AddParameter("UploadConfig", $config.upload)
+            $null = $powershell.AddParameter("ThreadId", $threadId)
+            $null = $powershell.AddParameter("MaxRecords", $MaxRecordsPerThread)
+            $null = $powershell.AddParameter("BatchUpdateSize", $BatchUpdateSize)
+            $null = $powershell.AddParameter("Sync", $sync)
+            $asyncResult = $powershell.BeginInvoke()
+            $runspaceInfo = [PSCustomObject]@{
+                PowerShell = $powershell
+                AsyncResult = $asyncResult
+                HostEmail = $hostEmail
+                ThreadId = $threadId
+                StartTime = Get-Date
+            }
+            $runspaces += $runspaceInfo
+            Write-ThreadSafeLog "Started thread $threadId for account: $hostEmail" -Color Yellow
+            Start-Sleep -Milliseconds 200
+        }
         Start-Sleep -Milliseconds 500
-    } while (($runspaces | Where-Object { $_.AsyncResult -and -not $_.AsyncResult.IsCompleted }))
-    
+    }
+
     # Final cleanup
     Write-ThreadSafeLog "All threads completed. Cleaning up runspace pool..." -Color Cyan
-    
+
     # Dispose any remaining PowerShell objects
     foreach ($runspace in $runspaces) {
         if ($runspace.PowerShell) {
@@ -767,11 +785,11 @@ WHERE DOWNLOADED = 1
             }
         }
     }
-    
+
     # Close and dispose the runspace pool
     $runspacePool.Close()
     $runspacePool.Dispose()
-    
+
     # Final summary
     $finalProgress = $sync.Progress
     Write-ThreadSafeLog "`n=== FINAL SUMMARY ===" -Color Cyan
@@ -782,10 +800,10 @@ WHERE DOWNLOADED = 1
     Write-ThreadSafeLog "Total runtime: $($progressTimer.Elapsed.ToString('hh\:mm\:ss'))" -Color Cyan
     Write-ThreadSafeLog "Upload completed successfully!" -Color Green
     Write-ThreadSafeLog "Upload provider: $($config.upload.provider)" -Color Cyan
-    
-} catch {
-    Write-ThreadSafeLog "Script execution failed: $_" -Level "ERROR" -Color Red
-    exit 1
-} finally {
-    # Cleanup is handled in the main execution block
-}
+
+    } catch {
+        Write-ThreadSafeLog "Script execution failed: $_" -Level "ERROR" -Color Red
+        exit 1
+    } finally {
+        # Cleanup is handled in the main execution block
+    }
