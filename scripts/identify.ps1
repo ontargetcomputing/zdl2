@@ -590,30 +590,31 @@ try {
     # Get the worker script block
     $workerScript = Get-WorkerScriptBlock
     
-    # Create runspaces for each account
+    # Create runspaces for each account, reusing thread IDs
     $runspaces = @()
-    $threadId = 1
-    
-    foreach ($account in  $accounts -split "`r`n") {
+    $availableThreadIds = [System.Collections.Queue]::new()
+    for ($i = 1; $i -le $MaxThreads; $i++) { $availableThreadIds.Enqueue($i) }
+    $accountsQueue = [System.Collections.Queue]::new()
+    foreach ($account in $accounts) { $accountsQueue.Enqueue($account) }
+
+    # Start initial runspaces up to MaxThreads
+    while ($runspaces.Count -lt $MaxThreads -and $accountsQueue.Count -gt 0) {
+        $threadId = $availableThreadIds.Dequeue()
+        $account = $accountsQueue.Dequeue()
         Write-ThreadSafeLog "Starting thread $threadId for account: $account" -Color Yellow
         $powershell = [powershell]::Create()
         $powershell.RunspacePool = $runspacePool
-        
-    # Add the script and parameters
-    $null = $powershell.AddScript($workerScript)
-    $null = $powershell.AddParameter("AccessToken", $accessToken)
-    $null = $powershell.AddParameter("Account", $account)
-    $null = $powershell.AddParameter("StartDate", $StartDate)
-    $null = $powershell.AddParameter("EndDate", $EndDate)
-    $null = $powershell.AddParameter("ConnectionString", $config.database.connectionString)
-    $null = $powershell.AddParameter("TableName", $config.database.tableName)
-    $null = $powershell.AddParameter("ExistingRecordings", $existingRecordings)
-    $null = $powershell.AddParameter("ThreadId", $threadId)
-    $null = $powershell.AddParameter("Sync", $sync)
-        
-        # Start the runspace
+        $null = $powershell.AddScript($workerScript)
+        $null = $powershell.AddParameter("AccessToken", $accessToken)
+        $null = $powershell.AddParameter("Account", $account)
+        $null = $powershell.AddParameter("StartDate", $StartDate)
+        $null = $powershell.AddParameter("EndDate", $EndDate)
+        $null = $powershell.AddParameter("ConnectionString", $config.database.connectionString)
+        $null = $powershell.AddParameter("TableName", $config.database.tableName)
+        $null = $powershell.AddParameter("ExistingRecordings", $existingRecordings)
+        $null = $powershell.AddParameter("ThreadId", $threadId)
+        $null = $powershell.AddParameter("Sync", $sync)
         $asyncResult = $powershell.BeginInvoke()
-        
         $runspaceInfo = [PSCustomObject]@{
             PowerShell = $powershell
             AsyncResult = $asyncResult
@@ -621,14 +622,62 @@ try {
             ThreadId = $threadId
             StartTime = Get-Date
         }
-        
         $runspaces += $runspaceInfo
-        $threadId++
-        
-        Write-ThreadSafeLog "Started thread $($threadId-1) for account: $account" -Color Yellow
-        
-        # Stagger thread starts to avoid overwhelming the API
+        Write-ThreadSafeLog "Started thread $threadId for account: $account" -Color Yellow
         Start-Sleep -Milliseconds 100
+    }
+
+    # Monitor and start new runspaces as threads become available
+    while ($runspaces.Count -gt 0 -or $accountsQueue.Count -gt 0) {
+        # Check for completed runspaces
+        $completedRunspaces = $runspaces | Where-Object { $_.AsyncResult.IsCompleted -and $_.PowerShell }
+        foreach ($completed in $completedRunspaces) {
+            Write-ThreadSafeLog "Processing completed thread $($completed.ThreadId) for account: $($completed.Account)" -Color Green
+            try {
+                $result = $completed.PowerShell.EndInvoke($completed.AsyncResult)
+                $duration = (Get-Date) - $completed.StartTime
+                Write-ThreadSafeLog "Thread $($completed.ThreadId) completed for account: $($completed.Account) (Duration: $($duration.ToString('mm\:ss')))" -Color Green
+            } catch {
+                Write-ThreadSafeLog "Thread $($completed.ThreadId) error for account $($completed.Account): $_" -Level "ERROR" -Color Red
+            } finally {
+                $completed.PowerShell.Dispose()
+                $completed.PowerShell = $null
+                # Return threadId to pool
+                $availableThreadIds.Enqueue($completed.ThreadId)
+                # Remove from runspaces
+                $runspaces = $runspaces | Where-Object { $_ -ne $completed }
+            }
+        }
+        # Start new runspaces if threads are available and accounts remain
+        while ($availableThreadIds.Count -gt 0 -and $accountsQueue.Count -gt 0) {
+            $threadId = $availableThreadIds.Dequeue()
+            $account = $accountsQueue.Dequeue()
+            Write-ThreadSafeLog "Starting thread $threadId for account: $account" -Color Yellow
+            $powershell = [powershell]::Create()
+            $powershell.RunspacePool = $runspacePool
+            $null = $powershell.AddScript($workerScript)
+            $null = $powershell.AddParameter("AccessToken", $accessToken)
+            $null = $powershell.AddParameter("Account", $account)
+            $null = $powershell.AddParameter("StartDate", $StartDate)
+            $null = $powershell.AddParameter("EndDate", $EndDate)
+            $null = $powershell.AddParameter("ConnectionString", $config.database.connectionString)
+            $null = $powershell.AddParameter("TableName", $config.database.tableName)
+            $null = $powershell.AddParameter("ExistingRecordings", $existingRecordings)
+            $null = $powershell.AddParameter("ThreadId", $threadId)
+            $null = $powershell.AddParameter("Sync", $sync)
+            $asyncResult = $powershell.BeginInvoke()
+            $runspaceInfo = [PSCustomObject]@{
+                PowerShell = $powershell
+                AsyncResult = $asyncResult
+                Account = $account
+                ThreadId = $threadId
+                StartTime = Get-Date
+            }
+            $runspaces += $runspaceInfo
+            Write-ThreadSafeLog "Started thread $threadId for account: $account" -Color Yellow
+            Start-Sleep -Milliseconds 100
+        }
+        Start-Sleep -Milliseconds 500
     }
     
     Write-ThreadSafeLog "All $($runspaces.Count) threads started. Monitoring progress..." -Color Cyan
