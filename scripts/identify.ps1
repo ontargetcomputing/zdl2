@@ -13,12 +13,14 @@ foreach ($module in $requiredModules) {
     }
 }
 
-# Global variables for progress tracking
-$script:TotalProcessed = 0
-$script:TotalInserted = 0
-$script:TotalSkipped = 0
-$script:TotalErrors = 0
-$script:ProgressMutex = [System.Threading.Mutex]::new($false)
+# RDB delete this
+# # Global variables for progress tracking
+#$script:TotalProcessed = 0
+# $script:TotalInserted = 0
+# $script:TotalSkipped = 0
+# $script:TotalErrors = 0
+#$script:ProgressMutex = [System.Threading.Mutex]::new($false)
+
 $script:LogMutex = [System.Threading.Mutex]::new($false)
 
 # Function to write thread-safe log messages
@@ -40,30 +42,6 @@ function Write-ThreadSafeLog {
         Add-Content -Path $logFile -Value $logMessage
     } finally {
         $script:LogMutex.ReleaseMutex()
-    }
-}
-
-# Function to update progress in thread-safe manner
-function Update-Progress {
-    param(
-        [int]$Processed = 0,
-        [int]$Inserted = 0,
-        [int]$Skipped = 0,
-        [int]$Errors = 0
-    )
-    
-    $script:ProgressMutex.WaitOne() | Out-Null
-    try {
-        $script:TotalProcessed += $Processed
-        $script:TotalInserted += $Inserted
-        $script:TotalSkipped += $Skipped
-        $script:TotalErrors += $Errors
-        
-        if (($script:TotalProcessed % 100) -eq 0 -or $Processed -gt 0) {
-            Write-ThreadSafeLog "Progress: Processed=$($script:TotalProcessed), Inserted=$($script:TotalInserted), Skipped=$($script:TotalSkipped), Errors=$($script:TotalErrors)" -Level "PROGRESS" -Color Cyan
-        }
-    } finally {
-        $script:ProgressMutex.ReleaseMutex()
     }
 }
 
@@ -209,7 +187,8 @@ function Get-WorkerScriptBlock {
             $ConnectionString,
             $TableName,
             $ExistingRecordings,
-            $ThreadId
+            $ThreadId,
+            $Sync
         )
         
         # Thread-safe logging function
@@ -232,7 +211,7 @@ function Get-WorkerScriptBlock {
         }
 
         # Function to update progress in thread-safe manner
-        function Update-ThreadProgress {
+        function Update-Progress {
             param(
                 [int]$Processed = 0,
                 [int]$Inserted = 0,
@@ -240,12 +219,19 @@ function Get-WorkerScriptBlock {
                 [int]$Errors = 0
             )
             
-            $sync.Progress.Processed += $Processed
-            $sync.Progress.Inserted += $Inserted
-            $sync.Progress.Skipped += $Skipped
-            $sync.Progress.Errors += $Errors
+            try {
+                $Sync.Progress.Processed += $Processed
+                $Sync.Progress.Inserted += $Inserted
+                $Sync.Progress.Skipped += $Skipped
+                $Sync.progress.Errors += $Errors
+
+                if (($Sync.Progress.Processed % 100) -eq 0 -or $Processed -gt 0) {
+                    Write-ThreadSafeLog "Progress: Processed=$($Sync.Progress.Processed), Inserted=$($Sync.Progress.Inserted), Skipped=$($Sync.Progress.Skipped), Errors=$($Sync.Progress.Errors)" -Level "PROGRESS" -Color Cyan
+                }
+            } finally {
+            }
         }
-        
+
         # Function to get recordings with enhanced error handling and rate limiting
         function Get-ZoomRecordings {
             param(
@@ -393,7 +379,6 @@ function Get-WorkerScriptBlock {
             $batchInserted = 0
             $batchSkipped = 0
             $batchErrors = 0
-            
             try {
                 foreach ($meeting in $Meetings) {
                     $meetingJson = $meeting | ConvertTo-Json -Depth 5
@@ -401,18 +386,15 @@ function Get-WorkerScriptBlock {
                         Write-ThreadSafeLog "No recording files found for meeting ID: $($meeting.id)" -Color Yellow -Level "WARNING"
                         continue
                     }
-                    
                     foreach ($file in $meeting.recording_files) {
                         $batchProcessed++
                         $key1 = $file.download_url
                         $key2 = "$($meeting.id)|$($file.recording_type)|$($file.file_size)"
-                        
                         if ($ExistingRecordings.ContainsKey($key1) -or $ExistingRecordings.ContainsKey($key2)) {
                             Write-ThreadSafeLog "Duplicate recording found for meeting ID: $($meeting.id) - Skipping" -Color Yellow -Level "WARNING"
                             $batchSkipped++
                             continue
                         }
-                        
                         # Create new row
                         $row = $dataTable.NewRow()
                         $row['GUID'] = $file.id
@@ -430,16 +412,13 @@ function Get-WorkerScriptBlock {
                         $row['UPLOADED'] = 0
                         $row['UPLOAD_PATH'] = ""
                         $row['UPLOAD_COMPLETED'] = [System.DBNull]::Value
-                        
-                        
                         $dataTable.Rows.Add($row)
                         $batchInserted++
-                        
                         # Bulk insert when batch is full
                         if ($dataTable.Rows.Count -ge 1000) {
                             Write-ThreadSafeLog "Bulk inserting records for account: $Account" -Color White -Level "INFO"
                             if (Invoke-BulkInsert -ConnectionString $ConnectionString -TableName $TableName -DataTable $dataTable) {
-                                # Optionally add custom progress tracking here if needed
+                                Update-Progress -Processed $batchProcessed -Inserted $batchInserted -Skipped $batchSkipped -Errors $batchErrors
                             } else {
                                 $batchErrors += $dataTable.Rows.Count
                             }
@@ -451,28 +430,22 @@ function Get-WorkerScriptBlock {
                 # Insert remaining records
                 if ($dataTable.Rows.Count -gt 0) {
                     Write-ThreadSafeLog "Bulk inserting remaining records into account: $Account" -Color White -Level "INFO"
-
                     if (Invoke-BulkInsert -ConnectionString $ConnectionString -TableName $TableName -DataTable $dataTable) {
-                        # Optionally add custom progress tracking here if needed
+                        Update-Progress -Processed $batchProcessed -Inserted $batchInserted -Skipped $batchSkipped -Errors $batchErrors
                     } else {
                         $batchErrors += $dataTable.Rows.Count
                     }
                 }
-                
-                # Update final progress for this thread
-                Update-ThreadProgress -Skipped $batchSkipped
-                
                 Write-ThreadSafeLog "Thread completed: Processed=$batchProcessed, Inserted=$batchInserted, Skipped=$batchSkipped, Errors=$batchErrors"
-                
             } catch {
                 Write-ThreadSafeLog "Thread error: $_" -Level "ERROR"
-                Update-ThreadProgress -Errors $batchProcessed
+                Update-Progress -Errors $batchProcessed
             }
         }
         # Main worker execution            
         try {
             Write-ThreadSafeLog "Thread started for account: $Account"
-
+            $script:TotalProcessed = 100
             # Split date range into 30-day chunks (inclusive of last chunk)
             $chunkStart = $StartDate
             $chunkEnd = $null
@@ -601,7 +574,7 @@ try {
     
     # Create synchronized hashtable for thread-safe communication
     $sync = [hashtable]::Synchronized(@{
-        LogQueue = New-Object System.Collections.Concurrent.ConcurrentQueue[string]
+        #LogQueue = New-Object System.Collections.Concurrent.ConcurrentQueue[string]
         Progress = @{
             Processed = 0
             Inserted = 0
@@ -636,7 +609,7 @@ try {
     $null = $powershell.AddParameter("TableName", $config.database.tableName)
     $null = $powershell.AddParameter("ExistingRecordings", $existingRecordings)
     $null = $powershell.AddParameter("ThreadId", $threadId)
-    #$null = $powershell.AddParameter("sync", $sync)
+    $null = $powershell.AddParameter("Sync", $sync)
         
         # Start the runspace
         $asyncResult = $powershell.BeginInvoke()
@@ -732,7 +705,6 @@ try {
     Write-ThreadSafeLog "Total errors: $($finalProgress.Errors)" -Color Red
     Write-ThreadSafeLog "Total runtime: $($progressTimer.Elapsed.ToString('hh\:mm\:ss'))" -Color Cyan
     Write-ThreadSafeLog "Import completed successfully!" -Color Green
-    
 } catch {
     Write-ThreadSafeLog "Script execution failed: $_" -Level "ERROR" -Color Red
     exit 1
