@@ -13,14 +13,6 @@ foreach ($module in $requiredModules) {
     }
 }
 
-# RDB delete this
-# # Global variables for progress tracking
-#$script:TotalProcessed = 0
-# $script:TotalInserted = 0
-# $script:TotalSkipped = 0
-# $script:TotalErrors = 0
-#$script:ProgressMutex = [System.Threading.Mutex]::new($false)
-
 $script:LogMutex = [System.Threading.Mutex]::new($false)
 
 # Function to write thread-safe log messages
