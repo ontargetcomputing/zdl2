@@ -1,9 +1,12 @@
-using module ../Modules/Configuration/Classes/ZDAConfiguration.psm1
 
-$configuration = [ZDAConfiguration]::new()
-$configuration.StartTranscript("configure")
+# Import the new configuration module
+Import-Module "$PSScriptRoot\ZDAConfiguration.psm1"
 
-$user_config = $configuration.ReadUserConfiguration()
+# Start transcript for configuration
+Start-TranscriptForApp -name "configure"
+
+# Read user configuration
+$user_config = Read-UserConfiguration
 
 $taskName = "Zoomdownloader"
 
