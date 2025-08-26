@@ -1,7 +1,4 @@
-#using module ../Modules/FileStorage/Classes/OneDriveFileStorage.psm1
-#using module ../Modules/FileStorage/Classes/S3FileStorage.psm1
 using module ../Modules/Configuration/Classes/ZDAConfiguration.psm1
-#using module ../Modules/Database/Classes/SQLServerDatabase.psm1
 
 $configuration = [ZDAConfiguration]::new()
 $configuration.StartTranscript("configure")
@@ -703,17 +700,15 @@ function Create-DatabasePage {
             password = $script:txtPassword.text
         }
 
-        $config = @{
-            sqlserver = $sqlserver
-        }
-
-        $script:database = [SQLServerDatabase]::new($config, $false)  
-        
+        $ConnectionString = "Server=$($sqlserver.server),$($sqlserver.port);Database=$($sqlserver.database);User ID=$($sqlserver.userid);Password=$($sqlserver.password);TrustServerCertificate=true"
+        Write-Host "Testing Connection String $ConnectionString"
         try {
-            $script:database.Connect()
-            $script:database.Disconnect()
+            $SQLServerConnection = New-Object System.Data.SqlClient.SqlConnection($ConnectionString)
+            $SQLServerConnection.Open()
+            $SQLServerConnection.Close()
             $script:lblDbStatus.Text = "SUCCESS: SQLServer Credentials Worked."
             $script:lblDbStatus.ForeColor = [System.Drawing.Color]::Green
+
         }
         catch {
             $script:lblDbStatus.Text = "FAILURE: SQLServer Credentials did not work."
@@ -1268,25 +1263,7 @@ $btnFinish.Add_Click({
         $jsonString = $config | ConvertTo-Json
         $configuration.SaveUserConfiguration($jsonString)
 
-        if ($database -eq $null) {
-            Write-Host "The database is null."
-
-            $sqlserver = @{
-                server = $script:txtServer.text
-                port = $script:txtPort.text
-                database = $script:txtDatabase.text
-                schema = $script:txtSchema.text
-                userid = $script:txtUsername.text
-                password = $script:txtPassword.text
-            }
-
-            $config = @{
-                sqlserver = $sqlserver
-            }
-
-            $script:database = [SQLServerDatabase]::new($config, $true)  
-        } 
-
+        CreateDatabase -ConnectionString $databaseConfig.ConnectionString
         scheduleOn
         [System.Windows.Forms.MessageBox]::Show("Configuration saved and Job Scheduled", "Setup Complete")
 
@@ -1294,6 +1271,52 @@ $btnFinish.Add_Click({
         $form.Close()
     }
 })
+
+function CreateDatabase {
+    param(
+        [string]$ConnectionString
+    )
+    Write-Host "Ensuring tables exist in SQL Server database"
+    $connection = New-Object System.Data.SqlClient.SqlConnection($ConnectionString)    
+    $connection.Open()
+    $table = $global:Config.Database.Schema + ".ZoomRecordings"
+    $mainTableSQL = @"
+    IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '$($global:Config.Database.Schema)' AND TABLE_NAME = 'ZoomRecordings')
+    CREATE TABLE $table (
+        GUID NVARCHAR(255) NOT NULL,
+        HOST_EMAIL NVARCHAR(255),
+        RECORDING_START NVARCHAR(255),
+        RECORDING_END NVARCHAR(255),
+        FILE_SIZE NVARCHAR(255),
+        DOWNLOAD_URL NVARCHAR(255),
+        MEETING_ID NVARCHAR(255),
+        TOPIC NVARCHAR(255),
+        RECORDING_TYPE NVARCHAR(255),
+        DOWNLOADED BIT,
+        TRYDLAGAIN INT,
+        DOWNLOAD_PATH NVARCHAR(255),
+        UPLOADED BIT,
+        UPLOAD_PATH NVARCHAR(255),
+        UPLOAD_COMPLETED DATETIME2 NULL,
+    )
+"@
+    #Write-Host("Query:$mainTableSQL")
+    $command = $connection.CreateCommand()
+    $command.CommandText = $mainTableSQL
+    $command.ExecuteNonQuery()
+
+    $table = $global:Config.Database.Schema + ".ZoomRecordings"
+    $createIndexSQL = @"
+    IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Uploaded' AND object_id = OBJECT_ID('$table'))
+    CREATE INDEX IX_Uploaded 
+    ON $table (Uploaded)
+"@
+    #Write-Host("Query:$createIndexSQL")
+    $command.CommandText = $createIndexSQL
+    $command.ExecuteNonQuery()
+    $command.Dispose()
+    $connection.Close()
+}
 
 
 function scheduleOn { 
