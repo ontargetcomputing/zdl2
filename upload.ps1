@@ -29,8 +29,9 @@ function Write-ThreadSafeLog {
         $logMessage = "[$timestamp] [$Level] $Message"
         Write-Host $logMessage -ForegroundColor $Color
         
-        # Also write to log file
-        $logFile = "zoom_upload_$(Get-Date -Format 'yyyyMMdd').log"
+        $logFileName = "zoom_upload_$(Get-Date -Format 'yyyyMMdd').log"
+        $logPath = Get-LogsPath
+        $logFile = Join-Path -Path $logPath -ChildPath $logFileName
         Add-Content -Path $logFile -Value $logMessage
     } finally {
         $script:LogMutex.ReleaseMutex()
@@ -40,7 +41,7 @@ function Write-ThreadSafeLog {
 # Function to load configuration using ZDAConfiguration module
 function Get-Configuration {
     try {
-        $config = Read-UserConfiguration
+        $config = Get-UserConfiguration
 
         if (-not $config) {
             throw "Failed to read user configuration"
@@ -62,6 +63,7 @@ function Get-WorkerScriptBlock {
             $TableName,
             $UploadConfig,
             $ThreadId,
+            $LogPath,
             $Sync
         )
         
@@ -79,7 +81,8 @@ function Get-WorkerScriptBlock {
             # Simple console output
             Write-Host $logMessage -ForegroundColor $Color
             
-            $logFile = "scripts/zoom_upload_${ThreadId}_$(Get-Date -Format 'yyyyMMdd').log"
+            $logFileName = "zoom_upload_${ThreadId}_$(Get-Date -Format 'yyyyMMdd').log"
+            $logFile = Join-Path -Path $LogPath -ChildPath $logFileName
             Add-Content -Path $logFile -Value $logMessage -Force
         }
 
@@ -693,6 +696,8 @@ WHERE DOWNLOADED = 1
         $null = $powershell.AddParameter("ThreadId", $threadId)
         $null = $powershell.AddParameter("MaxRecords", $MaxRecordsPerThread)
         $null = $powershell.AddParameter("BatchUpdateSize", $BatchUpdateSize)
+        $logPath = Get-LogsPath
+        $null = $powershell.AddParameter("LogPath", $logPath)
         $null = $powershell.AddParameter("Sync", $sync)
         $asyncResult = $powershell.BeginInvoke()
         $runspaceInfo = [PSCustomObject]@{

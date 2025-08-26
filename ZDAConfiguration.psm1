@@ -80,3 +80,11 @@ function Start-TranscriptForApp {
     $LogPath = Join-Path -Path $LogFolder -ChildPath ($name + "_" + ((Get-Date).ToString("yyyy-MM-dd")) + ".txt")
     Start-Transcript -Append $LogPath
 }
+
+function Get-LogsPath {
+    $localAppDataPath = [System.Environment]::GetFolderPath([System.Environment+SpecialFolder]::LocalApplicationData)
+    $appName = Get-AppName
+    $appDataDirectory = Join-Path -Path $localAppDataPath -ChildPath $appName
+    $LogFolder = Join-Path -Path $appDataDirectory -ChildPath 'logs'
+    return $LogFolder
+}

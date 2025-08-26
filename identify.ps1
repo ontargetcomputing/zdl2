@@ -30,7 +30,9 @@ function Write-ThreadSafeLog {
         Write-Host $logMessage -ForegroundColor $Color
         
         # Also write to log file
-        $logFile = "zoom_identify_$(Get-Date -Format 'yyyyMMdd').log"
+        $logFileName = "zoom_identify_$(Get-Date -Format 'yyyyMMdd').log"
+        $logPath = Get-LogsPath
+        $logFile = Join-Path -Path $logPath -ChildPath $logFileName
         Add-Content -Path $logFile -Value $logMessage
     } finally {
         $script:LogMutex.ReleaseMutex()
@@ -178,6 +180,7 @@ function Get-WorkerScriptBlock {
             $TableName,
             $ExistingRecordings,
             $ThreadId,
+            $LogPath,
             $Sync
         )
         
@@ -195,7 +198,8 @@ function Get-WorkerScriptBlock {
             # Simple console output
             Write-Host $logMessage -ForegroundColor $Color
             
-            $logFile = "scripts/zoom_identify_${ThreadId}_$(Get-Date -Format 'yyyyMMdd').log"
+            $logFileName = "zoom_identify_${ThreadId}_$(Get-Date -Format 'yyyyMMdd').log"
+            $logFile = Join-Path -Path $LogPath -ChildPath $logFileName
             Add-Content -Path $logFile -Value $logMessage -Force
                     
         }
@@ -603,6 +607,8 @@ try {
         $null = $powershell.AddParameter("TableName", $config.database.tableName)
         $null = $powershell.AddParameter("ExistingRecordings", $existingRecordings)
         $null = $powershell.AddParameter("BatchSize", $config.runspaces.batchSize)
+        $logPath = Get-LogsPath
+        $null = $powershell.AddParameter("LogPath", $logPath)
         $null = $powershell.AddParameter("ThreadId", $threadId)
         $null = $powershell.AddParameter("Sync", $sync)
         $asyncResult = $powershell.BeginInvoke()
@@ -655,6 +661,7 @@ try {
             $null = $powershell.AddParameter("TableName", $config.database.tableName)
             $null = $powershell.AddParameter("ExistingRecordings", $existingRecordings)
             $null = $powershell.AddParameter("ThreadId", $threadId)
+            $null = $powershell.AddParameter("LogPath", $LogPath)
             $null = $powershell.AddParameter("Sync", $sync)
             $asyncResult = $powershell.BeginInvoke()
             $runspaceInfo = [PSCustomObject]@{
