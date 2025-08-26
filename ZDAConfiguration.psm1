@@ -12,7 +12,7 @@ function Get-AppName {
     return (Get-ConfigurationItems)["app-name"]
 }
 
-function Create-LocalAppDataFolder {
+function Add-LocalAppDataFolder {
     $AppName = Get-AppName
     $localAppDataPath = [System.Environment]::GetFolderPath([System.Environment+SpecialFolder]::LocalApplicationData)
     $AppDataFolder = Join-Path -Path $localAppDataPath -ChildPath $AppName

@@ -40,7 +40,7 @@ function Write-ThreadSafeLog {
 # Function to load configuration using ZDAConfiguration module
 function Get-Configuration {
     try {
-        $config = Read-UserConfiguration
+        $config = Get-UserConfiguration
         if (-not $config) {
             throw "Failed to read user configuration"
         }

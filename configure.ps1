@@ -6,7 +6,7 @@ Import-Module "$PSScriptRoot\ZDAConfiguration.psm1"
 Start-TranscriptForApp -name "configure"
 
 # Read user configuration
-$user_config = Read-UserConfiguration
+$user_config = Get-UserConfiguration
 
 $taskName = "Zoomdownloader"
 
@@ -1262,7 +1262,7 @@ $btnFinish.Add_Click({
         }
 
 
-        Create-LocalAppDataFolder
+        Add-LocalAppDataFolder
         $jsonString = $config | ConvertTo-Json
         Save-UserConfiguration -Json $jsonString
 
