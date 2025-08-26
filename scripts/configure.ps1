@@ -1,8 +1,7 @@
-using module ../Modules/FileStorage/Classes/OneDriveFileStorage.psm1
-using module ../Modules/FileStorage/Classes/S3FileStorage.psm1
-using module ../Modules/Zoom/Classes/ZoomService.psm1
+#using module ../Modules/FileStorage/Classes/OneDriveFileStorage.psm1
+#using module ../Modules/FileStorage/Classes/S3FileStorage.psm1
 using module ../Modules/Configuration/Classes/ZDAConfiguration.psm1
-using module ../Modules/Database/Classes/SQLServerDatabase.psm1
+#using module ../Modules/Database/Classes/SQLServerDatabase.psm1
 
 $configuration = [ZDAConfiguration]::new()
 $configuration.StartTranscript("configure")
@@ -389,32 +388,6 @@ function Create-StorageSelectionPage {
     $script:btnTestOneDrive.Size = New-Object System.Drawing.Size(120, 30)
     $script:btnTestOneDrive.Name = "btnTestOneDrive"
     $script:btnTestOneDrive.Enabled = $false
-
-    $script:btnTestOneDrive.Add_Click({
-        $AppId = $script:txtAppId.Text.Trim()
-        $ClientSecret = $script:txtClientSecret.Text.Trim()
-        $TenantName = $script:txtTenantName.Text.Trim()
-
-        $script:lblOneDriveStatus.Text = "Testing connection..."
-        $script:lblOneDriveStatus.ForeColor = [System.Drawing.Color]::Blue
-        $script:btnTestOneDrive.Enabled = $false
-        $form.Update()
-
-        try {
-            $oneDriveFileStorage = [OneDriveFileStorage]::new($AppId, $ClientSecret, $TenantName)
-            $oneDriveFileStorage.Authenticate()
-            Write-Host "SUCCESS: Simulated OneDrive connection."
-            $script:lblOneDriveStatus.Text = "SUCCESS: OneDrive connection."
-            $script:lblOneDriveStatus.ForeColor = [System.Drawing.Color]::Green
-        }
-        catch {
-            $script:lblOneDriveStatus.Text = "ERROR: Connection test failed, $($_.Exception.Message)"
-            $script:lblOneDriveStatus.ForeColor = [System.Drawing.Color]::Red  
-        }
-        finally {
-            $script:btnTestOneDrive.Enabled = $true
-        }
-    })
 
     $pnlOneDrive.Controls.Add($script:btnTestOneDrive)
     # Enable Test Connection only if all OneDrive fields are filled
@@ -1368,6 +1341,114 @@ $btnCancel.Add_Click({
     }
 })
 
+# Function to get Zoom OAuth token with retry logic
+function Get-ZoomAccessToken {
+    param(
+        [string]$AccountId,
+        [string]$ClientId,
+        [string]$ClientSecret,
+        [int]$MaxRetries = 3
+    )
+    
+    $tokenUrl = "https://zoom.us/oauth/token"
+    $credentials = [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes("$ClientId`:$ClientSecret"))
+    
+    $headers = @{
+        "Authorization" = "Basic $credentials"
+        "Content-Type" = "application/x-www-form-urlencoded"
+    }
+    
+    $body = @{
+        "grant_type" = "account_credentials"
+        "account_id" = $AccountId
+    }
+    
+    for ($retry = 1; $retry -le $MaxRetries; $retry++) {
+        try {
+            $response = Invoke-RestMethod -Uri $tokenUrl -Method POST -Headers $headers -Body $body
+            Write-Host "Access token obtained successfully"
+            return $response.access_token
+        } catch {
+            Write-Host "Failed to get Zoom access token (attempt $retry/$MaxRetries): $_"
+            if ($retry -eq $MaxRetries) {
+                throw "Failed to get Zoom access token after $MaxRetries attempts: $_"
+            }
+            Start-Sleep -Seconds (2 * $retry)
+        }
+    }
+}
+
+
+function Test-OneDrive {
+    param(
+        [string] $appId,
+        [string] $appSecret,
+        [string] $tenantName
+    )
+      
+    $Scope = "https://graph.microsoft.com/.default"
+    $AuthUrl = "https://login.microsoftonline.com/$tenantName/oauth2/v2.0/token" 
+    $UserAgent = "NONISV|Zoom Downloader|OneDrive Upload/1.0"
+    #Write-Host "Authenticating to OneDrive, $appId, $appSecret, $tenantName"
+    Add-Type -AssemblyName System.Web
+
+    # Create body
+    $Body = @{
+        client_id     = $appId
+        client_secret = $appSecret
+        scope         = $Scope
+        grant_type    = 'client_credentials'
+    }
+
+    # Splat the parameters for Invoke-Restmethod for cleaner code
+    $PostSplat = @{
+        ContentType = 'application/x-www-form-urlencoded'
+        Method = 'POST'
+        Body = $Body
+        Uri = $AuthUrl
+        UserAgent = $UserAgent
+    }
+
+    # Request the token!
+    try {
+        $Request = Invoke-RestMethod @PostSplat
+        $AccessToken = $Request.access_token
+        Write-Host "Authentication To OneDrive Successful"
+    } catch {
+        # Catch block to handle the exception
+        Write-Host "Unable to Authenticate: $($_.Exception.Message)"
+        $errorMessage = "Unable to authenticate"
+        $exception = New-Object System.Exception($_.Exception.Message)
+        throw $exception
+    }
+}
+
+$script:btnTestOneDrive.Add_Click({
+    $AppId = $script:txtAppId.Text.Trim()
+    $ClientSecret = $script:txtClientSecret.Text.Trim()
+    $TenantName = $script:txtTenantName.Text.Trim()
+
+    $script:lblOneDriveStatus.Text = "Testing connection..."
+    $script:lblOneDriveStatus.ForeColor = [System.Drawing.Color]::Blue
+    $script:btnTestOneDrive.Enabled = $false
+    $form.Update()
+
+    try {
+        #$oneDriveFileStorage = [OneDriveFileStorage]::new($AppId, $ClientSecret, $TenantName)
+        Test-OneDrive -appId $AppId -appSecret $ClientSecret -tenantName $TenantName
+        Write-Host "SUCCESS: Simulated OneDrive connection."
+        $script:lblOneDriveStatus.Text = "SUCCESS: OneDrive connection."
+        $script:lblOneDriveStatus.ForeColor = [System.Drawing.Color]::Green
+    }
+    catch {
+        $script:lblOneDriveStatus.Text = "ERROR: Connection test failed, $($_.Exception.Message)"
+        $script:lblOneDriveStatus.ForeColor = [System.Drawing.Color]::Red  
+    }
+    finally {
+        $script:btnTestOneDrive.Enabled = $true
+    }
+})
+
 function Test-ZoomConnection {
     param(
         [string]$ApiKey,
@@ -1396,8 +1477,9 @@ function Test-ZoomConnection {
         $config = @{
             zoom     = $configuration
         } 
-        $zoomService = [ZoomService]::new($config)
-        $zoomService.GetAccessToken()
+
+        $accessToken = Get-ZoomAccessToken -AccountId $config.zoom.accountId -ClientId $config.zoom.clientId -ClientSecret $config.zoom.clientSecret
+
         return @{
             Success = $true
             ErrorMessage = "Connection to Zoom was Successful"
