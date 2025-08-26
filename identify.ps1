@@ -602,6 +602,7 @@ try {
         $null = $powershell.AddParameter("ConnectionString", $config.database.connectionString)
         $null = $powershell.AddParameter("TableName", $config.database.tableName)
         $null = $powershell.AddParameter("ExistingRecordings", $existingRecordings)
+        $null = $powershell.AddParameter("BatchSize", $config.runspaces.batchSize)
         $null = $powershell.AddParameter("ThreadId", $threadId)
         $null = $powershell.AddParameter("Sync", $sync)
         $asyncResult = $powershell.BeginInvoke()
