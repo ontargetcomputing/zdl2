@@ -39,7 +39,7 @@ function Get-UserConfigFilename {
     return (Get-ConfigurationItems)["user-config-filename"]
 }
 
-function Read-UserConfiguration {
+function Get-UserConfiguration {
     $configFilename = Get-UserConfigFilename
     $appName = Get-AppName
     $localAppDataPath = [System.Environment]::GetFolderPath([System.Environment+SpecialFolder]::LocalApplicationData)

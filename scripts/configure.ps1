@@ -1248,7 +1248,7 @@ $btnFinish.Add_Click({
         }
 
         $downloads = @{
-            basepath = $configuration.GetDownloadsDirectoryPath()
+            basepath = Get-DownloadsDirectoryPath
         }
 
         $config = @{
@@ -1262,9 +1262,9 @@ $btnFinish.Add_Click({
         }
 
 
-        $configuration.CreateLocalAppdataFolder()
+        Create-LocalAppDataFolder
         $jsonString = $config | ConvertTo-Json
-        $configuration.SaveUserConfiguration($jsonString)
+        Save-UserConfiguration -Json $jsonString
 
         CreateDatabase -ConnectionString $databaseConfig.ConnectionString
         scheduleOn

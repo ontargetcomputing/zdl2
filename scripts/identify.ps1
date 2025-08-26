@@ -1,5 +1,5 @@
-using module ../Modules/Configuration/Classes/ZDAConfiguration.psm1
-
+# Import the new configuration module
+Import-Module "$PSScriptRoot\ZDAConfiguration.psm1"
 
 # Import required modules
 $requiredModules = @('SqlServer')
@@ -40,9 +40,7 @@ function Write-ThreadSafeLog {
 # Function to load configuration using ZDAConfiguration module
 function Get-Configuration {
     try {
-        $configuration = [ZDAConfiguration]::new()
-        $config = $configuration.ReadUserConfiguration()
-        
+        $config = Read-UserConfiguration
         if (-not $config) {
             throw "Failed to read user configuration"
         }
