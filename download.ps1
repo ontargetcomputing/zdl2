@@ -636,12 +636,12 @@ WHERE DOWNLOADED = 0
 "@
     $totalFiles = (Invoke-Sqlcmd -ConnectionString $config.database.connectionString -Query $totalCountSql -QueryTimeout 120).Total
     
-    Write-ThreadSafeLog "PERFORMANCE ANALYSIS:" -Color Magenta
-    Write-ThreadSafeLog "Total files to download: $totalFiles" -Color Magenta
-    if ($totalFiles -gt 0) {
-        Write-ThreadSafeLog "With $MaxThreads threads: $([math]::Round($totalFiles / $MaxThreads, 0)) files per thread average" -Color Magenta
-        Write-ThreadSafeLog "Expected database calls: ~$([math]::Round($totalFiles / $BatchUpdateSize, 0)) (was $totalFiles without batching)" -Color Magenta
-    }
+    # Write-ThreadSafeLog "PERFORMANCE ANALYSIS:" -Color Magenta
+    # Write-ThreadSafeLog "Total files to download: $totalFiles" -Color Magenta
+    # if ($totalFiles -gt 0) {
+    #     Write-ThreadSafeLog "With $MaxThreads threads: $([math]::Round($totalFiles / $MaxThreads, 0)) files per thread average" -Color Magenta
+    #     Write-ThreadSafeLog "Expected database calls: ~$([math]::Round($totalFiles / $BatchUpdateSize, 0)) (was $totalFiles without batching)" -Color Magenta
+    # }
     
     # Handle resume functionality if configured
     $ResumeFromAccount = $null
