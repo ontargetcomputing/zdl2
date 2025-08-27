@@ -854,14 +854,13 @@ function Create-SchedulePage {
 
         $script:lblStartDate = New-Object System.Windows.Forms.Label
         $script:lblStartDate.Text = "Start Date:"
-        $script:lblStartDate.Location = New-Object System.Drawing.Point(50, 240)
-        $script:lblStartDate.Size = New-Object System.Drawing.Size(120, 20)
-
-`        
+        $script:lblStartDate.Location = New-Object System.Drawing.Point(30, 240)
+        $script:lblStartDate.Size = New-Object System.Drawing.Size(100, 20)
+   
         $panel.Controls.Add($script:lblStartDate)
 
         $script:dtpStartDate = New-Object System.Windows.Forms.DateTimePicker
-        $script:dtpStartDate.Location = New-Object System.Drawing.Point(160, 240)
+        $script:dtpStartDate.Location = New-Object System.Drawing.Point(140, 240)
         $script:dtpStartDate.Size = New-Object System.Drawing.Size(180, 25)
         $script:dtpStartDate.Format = "Short"
         $script:dtpStartDate.Visible = $false
