@@ -102,7 +102,7 @@ function Get-ZoomUsers {
     $nextPageToken = $null
     
     do {
-        $url = "https://api.zoom.us/v2/users?status=active&page_size=$PageSize"
+        $url = "https://api.zoom.us/v2/users?status=all&page_size=$PageSize"
         if ($nextPageToken) {
             $url += "&next_page_token=$nextPageToken"
         }
@@ -381,7 +381,6 @@ function Get-WorkerScriptBlock {
                         continue
                     }
                     foreach ($file in $meeting.recording_files) {
-                        $batchProcessed++
                         $key1 = $file.download_url
                         $key2 = "$($meeting.id)|$($file.recording_type)|$($file.file_size)"
                         if ($ExistingRecordings.ContainsKey($key1) -or $ExistingRecordings.ContainsKey($key2)) {
