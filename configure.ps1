@@ -1627,14 +1627,14 @@ function scheduleOn {
         0 { # Every Day at Midnight
             New-ScheduledTaskTrigger -At "00:00" -Daily
         }
-        1 { # Every Hour
-            New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Hours 1) -RepetitionDuration (New-TimeSpan -Days 1825)
+        1 { # Every Hour (indefinitely)
+            New-ScheduledTaskTrigger -Once -At (Get-Date).Date -RepetitionInterval (New-TimeSpan -Hours 1) -RepetitionDuration (New-TimeSpan -Days 1)
         }
-        2 { # Every 5 Minutes
-            New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 5) -RepetitionDuration (New-TimeSpan -Days 1825)
+        2 { # Every 5 Minutes (indefinitely)
+            New-ScheduledTaskTrigger -Once -At (Get-Date).Date -RepetitionInterval (New-TimeSpan -Minutes 5) -RepetitionDuration (New-TimeSpan -Days 5)
         }
         3 { # Immediate Single Run
-            New-ScheduledTaskTrigger -Once -At (Get-Date).AddSeconds(15)
+            New-ScheduledTaskTrigger -Once -At (Get-Date).AddSeconds(30)
         }
         4 { # Custom
             if ([string]::IsNullOrWhiteSpace($script:txtCustom.Text)) {
@@ -1681,6 +1681,14 @@ function scheduleOn {
 
         # (optional) Settings
         $settings  = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
+
+        $settings = New-ScheduledTaskSettingsSet `
+            -MultipleInstances Queue `                # or IgnoreNew
+            #-ExecutionTimeLimit (New-TimeSpan -Hours 6)  # optional safety timeout
+            -AllowStartIfOnBatteries `
+            -DontStopIfGoingOnBatteries
+
+
 
         # Build the task object
         $task = New-ScheduledTask -Action $action -Trigger $trigger -Principal $principal -Settings $settings
