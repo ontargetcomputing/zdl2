@@ -244,7 +244,7 @@ function Get-WorkerScriptBlock {
             Write-ThreadSafeLog "Querying recordings for $Account from $($fromStr) to $($toStr)"
             do {
                 $pageCount++
-                $url = "https://api.zoom.us/v2/users/me/recordings?from=$fromStr&to=$toStr&page_size=$PageSize"
+                $url = "https://api.zoom.us/v2/users/$Account/recordings?from=$fromStr&to=$toStr&page_size=$PageSize"
                 if ($nextPageToken) {
                     $url += "&next_page_token=$nextPageToken"
                 }
