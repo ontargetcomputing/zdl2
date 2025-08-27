@@ -1266,8 +1266,14 @@ $btnFinish.Add_Click({
         Save-UserConfiguration -Json $jsonString
 
         CreateDatabase -ConnectionString $databaseConfig.ConnectionString
-        scheduleOn
-        [System.Windows.Forms.MessageBox]::Show("Configuration saved and Job Scheduled", "Setup Complete")
+        $taskScheduled = scheduleOn
+Write-Host "The results of scheduling the task was: $taskScheduled"
+        if ($taskScheduled -eq $true) {
+            [System.Windows.Forms.MessageBox]::Show("Configuration saved and Job Scheduled", "Setup Complete")
+        } else {
+            [System.Windows.Forms.MessageBox]::Show("Configuration saved, however, Job NOT Scheduled", "Setup Complete")
+        }
+        
 
         $form.DialogResult = "OK"
         $form.Close()
@@ -1320,31 +1326,377 @@ function CreateDatabase {
     $connection.Close()
 }
 
+function Get-CurrentUserInfo {
+    $username = $env:USERNAME
+    $computername = $env:COMPUTERNAME
+    $userdomain = $env:USERDOMAIN
+    $dnsdomain = $env:USERDNSDOMAIN
+    
+    # Check if user is domain user
+    if ($userdomain -ne $computername) {
+        # Domain user
+        $isDomainUser = $true
+        $fullUsername = "$userdomain\$username"
+        
+        # Alternative UPN format if available
+        if ($dnsdomain) {
+            $upnUsername = "$username@$dnsdomain"
+        } else {
+            $upnUsername = $fullUsername
+        }
+    } else {
+        # Local user
+        $isDomainUser = $false
+        $fullUsername = "$computername\$username"
+        $upnUsername = $fullUsername
+    }
+    
+    return @{
+        IsDomainUser = $isDomainUser
+        Username = $username
+        Domain = $userdomain
+        ComputerName = $computername
+        FullUsername = $fullUsername
+        UPNUsername = $upnUsername
+    }
+}
+
+function Test-UserCredentials {
+    param(
+        [string]$Username,
+        [string]$Password
+    )
+    
+    try {
+        Add-Type -AssemblyName System.DirectoryServices.AccountManagement
+        
+        # Determine if this is actually a domain user or local user
+        # If username contains \ and domain part equals computer name, it's local
+        if ($Username.Contains('\')) {
+            $domain = $Username.Split('\')[0]
+            $user = $Username.Split('\')[1]
+            
+            # Check if domain part is actually the computer name (local user)
+            if ($domain -eq $env:COMPUTERNAME) {
+                Write-Host "DEBUG: Detected local user '$user' (domain part matches computer name)"
+                
+                $contextType = [System.DirectoryServices.AccountManagement.ContextType]::Machine
+                $principalContext = $null
+                
+                try {
+                    $principalContext = New-Object System.DirectoryServices.AccountManagement.PrincipalContext($contextType)
+                    $isValid = $principalContext.ValidateCredentials($user, $Password)
+                    Write-Host "DEBUG: Local user validation result: $isValid"
+                    return $isValid
+                }
+                finally {
+                    if ($principalContext) { $principalContext.Dispose() }
+                }
+            } else {
+                # True domain user
+                Write-Host "DEBUG: Validating domain user '$user' in domain '$domain'"
+                
+                $contextType = [System.DirectoryServices.AccountManagement.ContextType]::Domain
+                $principalContext = $null
+                
+                try {
+                    $principalContext = New-Object System.DirectoryServices.AccountManagement.PrincipalContext($contextType, $domain)
+                    $isValid = $principalContext.ValidateCredentials($user, $Password)
+                    Write-Host "DEBUG: Domain validation result: $isValid"
+                    return $isValid
+                }
+                catch {
+                    Write-Host "DEBUG: Domain validation failed, might be local user with domain format: $($_.Exception.Message)"
+                    # Fallback: try as local user
+                    $contextType = [System.DirectoryServices.AccountManagement.ContextType]::Machine
+                    $principalContext2 = $null
+                    try {
+                        $principalContext2 = New-Object System.DirectoryServices.AccountManagement.PrincipalContext($contextType)
+                        $isValid = $principalContext2.ValidateCredentials($user, $Password)
+                        Write-Host "DEBUG: Fallback local validation result: $isValid"
+                        return $isValid
+                    }
+                    finally {
+                        if ($principalContext2) { $principalContext2.Dispose() }
+                    }
+                }
+                finally {
+                    if ($principalContext) { $principalContext.Dispose() }
+                }
+            }
+        } 
+        else {
+            Write-Host "DEBUG: Validating local user '$Username' (no domain part)"
+            
+            $contextType = [System.DirectoryServices.AccountManagement.ContextType]::Machine
+            $principalContext = $null
+            
+            try {
+                $principalContext = New-Object System.DirectoryServices.AccountManagement.PrincipalContext($contextType)
+                $isValid = $principalContext.ValidateCredentials($Username, $Password)
+                Write-Host "DEBUG: Local validation result: $isValid"
+                return $isValid
+            }
+            finally {
+                if ($principalContext) { $principalContext.Dispose() }
+            }
+        }
+    }
+    catch {
+        Write-Host "DEBUG: Credential validation exception: $($_.Exception.Message)"
+        Write-Host "DEBUG: Exception type: $($_.Exception.GetType().FullName)"
+        return $false
+    }
+}
+
+function Get-PasswordModal {
+    param(
+        [string]$Username,
+        [string]$Title = "Enter Password"
+    )
+    
+    do {
+        $validPassword = $false
+        $password = $null
+        
+        # Create password input form
+        $passwordForm = New-Object System.Windows.Forms.Form
+        $passwordForm.Text = $Title
+        $passwordForm.Size = New-Object System.Drawing.Size(400, 280)
+        $passwordForm.StartPosition = "CenterParent"
+        $passwordForm.FormBorderStyle = "FixedDialog"
+        $passwordForm.MaximizeBox = $false
+        $passwordForm.MinimizeBox = $false
+        $passwordForm.TopMost = $true
+        
+        # Username label
+        $lblUser = New-Object System.Windows.Forms.Label
+        $lblUser.Text = "Username: $Username"
+        $lblUser.Location = New-Object System.Drawing.Point(20, 20)
+        $lblUser.Size = New-Object System.Drawing.Size(350, 20)
+        $lblUser.Font = New-Object System.Drawing.Font("Microsoft Sans Serif", 9, [System.Drawing.FontStyle]::Bold)
+        $passwordForm.Controls.Add($lblUser)
+        
+        # Instructions label
+        $lblInstructions = New-Object System.Windows.Forms.Label
+        $lblInstructions.Text = "Enter your password and click Validate. You must validate successfully to continue."
+        $lblInstructions.Location = New-Object System.Drawing.Point(20, 45)
+        $lblInstructions.Size = New-Object System.Drawing.Size(350, 40)
+        $lblInstructions.ForeColor = [System.Drawing.Color]::DarkBlue
+        $passwordForm.Controls.Add($lblInstructions)
+        
+        # Password label
+        $lblPassword = New-Object System.Windows.Forms.Label
+        $lblPassword.Text = "Password:"
+        $lblPassword.Location = New-Object System.Drawing.Point(20, 100)
+        $lblPassword.Size = New-Object System.Drawing.Size(80, 20)
+        $passwordForm.Controls.Add($lblPassword)
+        
+        # Password textbox
+        $txtPassword = New-Object System.Windows.Forms.TextBox
+        $txtPassword.Location = New-Object System.Drawing.Point(100, 100)
+        $txtPassword.Size = New-Object System.Drawing.Size(250, 20)
+        $txtPassword.UseSystemPasswordChar = $true
+        $passwordForm.Controls.Add($txtPassword)
+        
+        # Status label for validation feedback
+        $lblStatus = New-Object System.Windows.Forms.Label
+        $lblStatus.Location = New-Object System.Drawing.Point(20, 130)
+        $lblStatus.Size = New-Object System.Drawing.Size(350, 40)
+        $lblStatus.Text = ""
+        $passwordForm.Controls.Add($lblStatus)
+        
+        # Validate button
+        $btnValidate = New-Object System.Windows.Forms.Button
+        $btnValidate.Text = "Validate"
+        $btnValidate.Location = New-Object System.Drawing.Point(100, 160)
+        $btnValidate.Size = New-Object System.Drawing.Size(80, 30)
+        $passwordForm.Controls.Add($btnValidate)
+        
+        # OK button
+        $btnOK = New-Object System.Windows.Forms.Button
+        $btnOK.Text = "OK"
+        $btnOK.Location = New-Object System.Drawing.Point(200, 200)
+        $btnOK.Size = New-Object System.Drawing.Size(80, 30)
+        $btnOK.DialogResult = "OK"
+        $btnOK.Enabled = $false  # Disabled until validation passes
+        $passwordForm.AcceptButton = $btnOK
+        $passwordForm.Controls.Add($btnOK)
+        
+        # Cancel button
+        $btnCancel = New-Object System.Windows.Forms.Button
+        $btnCancel.Text = "Cancel"
+        $btnCancel.Location = New-Object System.Drawing.Point(290, 200)
+        $btnCancel.Size = New-Object System.Drawing.Size(80, 30)
+        $btnCancel.DialogResult = "Cancel"
+        $passwordForm.CancelButton = $btnCancel
+        $passwordForm.Controls.Add($btnCancel)
+        
+        # Variable to track if password was validated
+        $script:passwordValidated = $false
+        
+        # Validation logic
+        $btnValidate.Add_Click({
+            if ([string]::IsNullOrWhiteSpace($txtPassword.Text)) {
+                $lblStatus.Text = "Please enter a password"
+                $lblStatus.ForeColor = [System.Drawing.Color]::Red
+                $btnOK.Enabled = $false
+                $script:passwordValidated = $false
+                return
+            }
+            
+            $lblStatus.Text = "Validating credentials..."
+            $lblStatus.ForeColor = [System.Drawing.Color]::Blue
+            $btnValidate.Enabled = $false
+            $passwordForm.Update()
+            
+            $isValid = Test-UserCredentials -Username $Username -Password $txtPassword.Text
+            
+            if ($isValid) {
+                $lblStatus.Text = "Credentials validated successfully! You can now click OK."
+                $lblStatus.ForeColor = [System.Drawing.Color]::Green
+                $btnOK.Enabled = $true
+                $script:passwordValidated = $true
+            } else {
+                $lblStatus.Text = "Invalid credentials. Please try again."
+                $lblStatus.ForeColor = [System.Drawing.Color]::Red
+                $btnOK.Enabled = $false
+                $script:passwordValidated = $false
+                $txtPassword.Clear()
+                $txtPassword.Focus()
+            }
+            
+            $btnValidate.Enabled = $true
+        })
+        
+        # Auto-validate on Enter key in password field
+        $txtPassword.Add_KeyDown({
+            if ($_.KeyCode -eq "Enter") {
+                $btnValidate.PerformClick()
+            }
+        })
+        
+        # Reset password validation when text changes
+        $txtPassword.Add_TextChanged({
+            if ($script:passwordValidated -and $txtPassword.Text -ne $password) {
+                $lblStatus.Text = "Password changed. Please validate again."
+                $lblStatus.ForeColor = [System.Drawing.Color]::Orange
+                $btnOK.Enabled = $false
+                $script:passwordValidated = $false
+            }
+        })
+        
+        # Focus on password field
+        $passwordForm.Add_Shown({
+            $txtPassword.Focus()
+        })
+        
+        # Show the form and get result
+        $result = $passwordForm.ShowDialog()
+        
+        if ($result -eq "OK" -and $script:passwordValidated) {
+            $validPassword = $true
+            $password = $txtPassword.Text
+        } elseif ($result -eq "Cancel") {
+            return $null  # User cancelled
+        } else {
+            # User clicked OK without validating - show warning and loop again
+            [System.Windows.Forms.MessageBox]::Show("You must validate your password before continuing.", "Validation Required", "OK", "Warning")
+        }
+        
+        $passwordForm.Dispose()
+        
+    } while (-not $validPassword)
+    
+    return $password
+}
 
 function scheduleOn { 
-      scheduleOff
-      $script = (Join-Path $PSScriptRoot '\zoomdownloader.ps1')
-      $arguement = "-noprofile -executionpolicy bypass ", $script -join " "
-      Write-Host($arguement)
-      $action = New-ScheduledTaskAction -Execute "PowerShell.exe" -Argument $arguement -WorkingDirectory $PSScriptRoot
+    # Remove any existing task first
+    scheduleOff
 
-      if ( $script:cmbSchedule.SelectedIndex -eq 0 ) {
-        $commandString =  "New-ScheduledTaskTrigger", "-At 0:00 -Daily" -join " "
-      } elseif ( $script:cmbSchedule.SelectedIndex -eq 1) {
-        $commandString =  "New-ScheduledTaskTrigger", "-Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 60) -RepetitionDuration (New-TimeSpan -Days (5 * 365))" -join " "        
-      } elseif ( $script:cmbSchedule.SelectedIndex -eq 2) {
-        $commandString =  "New-ScheduledTaskTrigger", "-Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 5) -RepetitionDuration (New-TimeSpan -Days (5 * 365))" -join " "
-      } elseif ( $script:cmbSchedule.SelectedIndex -eq 3) {
-        $commandString =  "New-ScheduledTaskTrigger", "-At (Get-Date) -Once" -join " "
-      } elseif ( $script:cmbSchedule.SelectedIndex -eq 4) {
-        $commandString =  "New-ScheduledTaskTrigger", $script.textCustom.text -join " "
-      }
+    # Define the script path and action
+    $scriptPath = Join-Path $PSScriptRoot 'zoomdownloader.ps1'
+    $arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$scriptPath`""
+    Write-Host "Creating scheduled task with arguments: $arguments"
+    
+    $action = New-ScheduledTaskAction -Execute "PowerShell.exe" -Argument $arguments -WorkingDirectory $PSScriptRoot
+    
+   # Create trigger based on selected schedule
+    $trigger = switch ($script:cmbSchedule.SelectedIndex) {
+        0 { # Every Day at Midnight
+            New-ScheduledTaskTrigger -At "00:00" -Daily
+        }
+        1 { # Every Hour
+            New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Hours 1) -RepetitionDuration (New-TimeSpan -Days 1825)
+        }
+        2 { # Every 5 Minutes
+            New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 5) -RepetitionDuration (New-TimeSpan -Days 1825)
+        }
+        3 { # Immediate Single Run
+            New-ScheduledTaskTrigger -Once -At (Get-Date).AddSeconds(15)
+        }
+        4 { # Custom
+            if ([string]::IsNullOrWhiteSpace($script:txtCustom.Text)) {
+                Write-Host "Custom schedule expression is required but was empty"
+                return $false
+            }
+            try {
+                Invoke-Expression "New-ScheduledTaskTrigger $($script:txtCustom.Text.Trim())"
+            }
+            catch {
+                Write-Host "Invalid custom schedule expression: $($_.Exception.Message)"
+                return $false
+            }
+        }
+        default {
+            Write-Host "Invalid schedule selection: $($script:cmbSchedule.SelectedIndex)"
+            return $false
+        }
+    }
 
-      Write-Host "Scheduling with '$commandString'."
-      $trigger = Invoke-Expression $commandString
-      $principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest
-      Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Principal $principal
-      Write-Host "Scheduled the task '$taskName' to run even if the user logs out."
+    Write-Host "Creating scheduled task trigger for option $($script:cmbSchedule.SelectedIndex): $($script:cmbSchedule.SelectedItem)"
+  
+    # Get user information
+    $userInfo = Get-CurrentUserInfo
+    if ($userInfo.IsDomainUser) {
+        Write-Host "Task will be configured for domain user: $($userInfo.FullUsername)"
+        $userForTask = $userInfo.FullUsername
+    } else {
+        Write-Host "Task will be configured for local user: $($userInfo.FullUsername)"
+        $userForTask = $userInfo.FullUsername
+    }
+
+    $passwordPlain = Get-PasswordModal -Username $userForTask -Title "Scheduled Task Credentials Required"
+    
+    if ($null -eq $passwordPlain) {
+        Write-Host "Password entry was cancelled. Task creation aborted."
+        $null = [System.Windows.Forms.MessageBox]::Show("Task creation was cancelled. No scheduled task was created.", "Task Creation Cancelled", "Ok", "Information")
+        return $false
+    }
+    
+    try {
+       # Principal (RunLevel Highest + logon type)
+        $principal = New-ScheduledTaskPrincipal -UserId $userForTask -LogonType Password -RunLevel Highest
+
+        # (optional) Settings
+        $settings  = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
+
+        # Build the task object
+        $task = New-ScheduledTask -Action $action -Trigger $trigger -Principal $principal -Settings $settings
+
+        # Register using InputObject + credentials (do NOT also pass -Action/-Trigger/-Principal here)
+        $null = Register-ScheduledTask -TaskName $taskName -InputObject $task -User $userForTask -Password $passwordPlain -Force
+
+        Write-Host "Task successfully created and configured to run as $userForTask."
+        $null = [System.Windows.Forms.MessageBox]::Show("Scheduled task created successfully and configured to run as $userForTask!", "Task Created Successfully", "OK", "Information")
+        return $true
+    }
+    catch {
+        Write-Host "Failed to create scheduled task: $($_.Exception.Message)"
+        $null = [System.Windows.Forms.MessageBox]::Show("Failed to create scheduled task: $($_.Exception.Message)", "Task Creation Failed", "OK", "Error")
+        return $false
+    }
 }
 
 function scheduleOff { 
