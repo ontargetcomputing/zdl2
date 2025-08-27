@@ -514,19 +514,74 @@ try {
     $accessToken = Get-ZoomAccessToken -AccountId $config.zoom.accountId -ClientId $config.zoom.clientId -ClientSecret $config.zoom.clientSecret
     
     # Determine which accounts to process
+    Write-ThreadSafeLog "Getting all users from Zoom account..."
+    $allAccounts = Get-ZoomUsers -AccessToken $accessToken
+    # if ($allAccounts) {
+    #     Write-ThreadSafeLog "Found the following users in Zoom:"
+    #     $allAccounts | ForEach-Object {
+    #         Write-ThreadSafeLog "  - $_" -ForegroundColor Green
+    #     }
+    # } else {
+    #         Write-ThreadSafeLog "No configured accounts found in Zoom." -Level "WARNING" -Color Yellow
+    # }
+    $allAccounts = Get-ZoomUsers -AccessToken $accessToken
+    Write-ThreadSafeLog "Found the following users in Zoom:"
+    $allAccounts | ForEach-Object {
+        Write-ThreadSafeLog "  - $_" -ForegroundColor Green
+    }
     $accounts = @()
     if ($config.accounts) {
         if ($config.accounts -is [array]) {
             $accounts = $config.accounts
         } else {
-            $accounts = @($config.accounts)
+            $accounts = $config.accounts -split '\r\n' | Where-Object { $_.Trim() -ne '' }
         }
-    } else {
-        # Get all users from Zoom account
-        Write-ThreadSafeLog "Getting all users from Zoom account..."
-        $accounts = Get-ZoomUsers -AccessToken $accessToken
+        Write-ThreadSafeLog "User configured list of accounts:" -Color Cyan
+        $accounts | ForEach-Object {
+            Write-ThreadSafeLog "  - $_" -Color Cyan
+        }
+        # Store original accounts for logging
+        $originalAccounts = $accounts
+        
+        # Determine which accounts match and which don't
+        $matchedAccounts = @()
+        $filteredOutAccounts = @()
+        
+        foreach ($configAccount in $originalAccounts) {
+
+            $found = $allAccounts | Where-Object { $_ -eq $configAccount }
+            if ($found) {
+                Write-ThreadSafeLog "Matched user configured account with existing Zoom account: $configAccount" -Color Green
+                $matchedAccounts += $configAccount
+            } else {
+                Write-ThreadSafeLog "No match found in Zoom for account: $configAccount" -Level WARNING -Color Yellow
+                $filteredOutAccounts += $configAccount
+            }
+        }
+        
+        # Set accounts to only the matched ones
+        $accounts = $matchedAccounts
+        
+        # Log accounts that matched
+        if ($matchedAccounts) {
+            Write-Host "Found the following configured accounts in Zoom:"
+            $matchedAccounts | ForEach-Object {
+                Write-Host "  - $_" -ForegroundColor Green
+            }
+        }
+        
+        # Log any accounts that were filtered out
+        if ($filteredOutAccounts) {
+            Write-Warning "The following configured accounts were not found in Zoom and will be skipped:"
+            $filteredOutAccounts | ForEach-Object {
+                Write-Warning "  - $_"
+            }
+        }
+    } else {       
+        $accounts = $allAccounts
+        Write-ThreadSafeLog "Using all Zoom accounts (no specific accounts configured)"
     }
-    
+        
     # Handle resume functionality if configured
     $ResumeFromAccount = $null
     if ($config.resume -and $config.resume.fromAccount) {
